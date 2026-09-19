@@ -23,7 +23,7 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - Static site, no backend/database. `serve.js` is a zero-dependency static file server for local testing (`node serve.js [port]`, then open `http://localhost:8080/index.html`).
 - **Version control**: git repo initialized locally and pushed to GitHub at `https://github.com/pazuju-website/pazuju-website` (branch `main`). Git was freshly installed via winget on this machine. Push auth is handled by Git Credential Manager (already authorized), so pushes work without further prompts.
 - **Hosting**: deploying via GitHub Pages (Settings → Pages, source = `main` branch / root). `CNAME` file in repo root maps the custom domain.
-- **Domain**: `pazuju.com`, registered through Netfirms (domain-only, no Netfirms hosting plan). DNS is pointed at GitHub Pages: 4 A records on `@` to GitHub's Pages IPs (185.199.108/109/110/111.153) and a CNAME on `www` to `pazuju-website.github.io.`. Both `pazuju.com` and `www.pazuju.com` are intended to work. DNS records were added 2026-09-19; propagation/HTTPS verification in progress.
+- **Domain**: `pazuju.com`, registered through Netfirms (domain-only, no Netfirms hosting plan). DNS is pointed at GitHub Pages: 4 A records on `@` to GitHub's Pages IPs (185.199.108/109/110/111.153) and a CNAME on `www` to `pazuju-website.github.io.`. Both `pazuju.com` and `www.pazuju.com` are intended to work. DNS records added and verified 2026-09-19 — **`http://pazuju.com` is confirmed live**. HTTPS certificate was still provisioning by GitHub as of setup time; "Enforce HTTPS" on the Pages settings page will become checkable once that finishes (check it then).
 - `index.html` — marketing/landing page with rules.
 - `play.html` — the actual game page. Fetches `puzzles/manifest.json`, shows a date picker restricted to released dates, loads `puzzles/{date}/{size}.xml` per selection.
 - `Online Game/js/pazuju-xml-loader.js` — parses the puzzle XML into a plain-object shape.
@@ -38,7 +38,7 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - [x] Tray pieces render smaller than board cells, expand to full size when dragged out
 - [x] Multi-day archive (date picker in `play.html`, driven by `manifest.json`) — **currently only `2026-09-17` is registered**; needs real puzzle folders/dates added
 - [x] Git version control set up, pushed to GitHub
-- [~] Live hosting: GitHub Pages configured, custom domain DNS set up at Netfirms — **verifying DNS/HTTPS propagation as of 2026-09-19, not yet confirmed live**
+- [x] Live hosting: **pazuju.com is live** via GitHub Pages + Netfirms DNS (as of 2026-09-19). HTTPS certificate still provisioning — remember to check "Enforce HTTPS" once available.
 - [ ] Shared backend/database so future web + mobile apps read from one source — **not started, not designed yet**
 - [ ] Native Android app
 - [ ] Native iOS app
