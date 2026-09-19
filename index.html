@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pazuju &mdash; a daily piece-placement puzzle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="images/pazuju-logo.png">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="images/pazuju-logo.png" alt="Pazuju"></a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="play.html">Play</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>A daily puzzle where you build the board yourself</h1>
+    <p>
+      Pazuju plays like Sudoku, with one twist: the grid isn&rsquo;t given to you whole.
+      You rotate and drag oddly-shaped pieces into place first, then fill in the numbers.
+      Three new puzzles every day, in three sizes.
+    </p>
+    <a class="btn" href="play.html">Play Today&rsquo;s Puzzles</a>
+  </section>
+
+  <section class="block">
+    <h2>How to play</h2>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <h3>1. Assemble the board</h3>
+        <p>Some pieces already sit on the board. Drag the rest from the tray and rotate them until every piece fits without overlapping, filling the grid completely.</p>
+      </div>
+      <div class="rule-card">
+        <h3>2. Fill in the numbers</h3>
+        <p>Once a square is covered, click it to cycle through the possible numbers. Some numbers are given from the start and can&rsquo;t be changed.</p>
+      </div>
+      <div class="rule-card">
+        <h3>3. One of each, everywhere</h3>
+        <p>Just like Sudoku, every number can appear only once in each row, each column, and inside each individual piece &mdash; regardless of the piece&rsquo;s shape or size.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Three sizes, every day</h2>
+    <p style="color:var(--muted); max-width:640px;">
+      Each day brings three fresh puzzles built on the same rules but different board sizes,
+      so you can pick something quick or something that&rsquo;ll take a while.
+    </p>
+    <div class="size-grid" style="margin-top:18px;">
+      <div class="size-card"><div class="dims">6&times;6</div><div class="difficulty">Easy &middot; a few minutes</div></div>
+      <div class="size-card"><div class="dims">8&times;8</div><div class="difficulty">Medium &middot; a short sitting</div></div>
+      <div class="size-card"><div class="dims">10&times;10</div><div class="difficulty">Hard &middot; the full challenge</div></div>
+    </div>
+  </section>
+
+  <section class="block" style="text-align:center;">
+    <a class="btn" href="play.html">Go to Today&rsquo;s Puzzles</a>
+  </section>
+</main>
+
+<footer class="site-footer">
+  Pazuju &middot; a daily piece-placement puzzle
+</footer>
+
+</body>
+</html>

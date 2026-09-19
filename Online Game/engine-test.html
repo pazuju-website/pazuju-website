@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pazuju Engine Test</title>
+<style>
+  body {
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    background: #f4ede1;
+    color: #2c2c2a;
+    margin: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  p.sub { color: #6b6a63; margin: 0 0 16px; font-size: 14px; text-align: center; max-width: 480px; }
+  .picker { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+  select, button { font-size: 14px; padding: 6px 10px; }
+  .meta { font-size: 12px; color: #a99; margin-bottom: 8px; min-height: 16px; }
+  .layout { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  #board {
+    position: relative;
+    background: #fff;
+    border: 2px solid #2c2c2a;
+    background-image:
+      linear-gradient(to right, #ddd 1px, transparent 1px),
+      linear-gradient(to bottom, #ddd 1px, transparent 1px);
+    touch-action: none;
+  }
+  .cell {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+  }
+  .cell.empty-bg { cursor: default; background: #fff; }
+  .cell.given { cursor: default; }
+  .cell.conflict { outline: 3px solid #b91c1c; outline-offset: -3px; z-index: 5; }
+  .remove-btn {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #2c2c2a;
+    color: #fff;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 20;
+  }
+  #tray {
+    width: 240px;
+    min-height: 250px;
+    background: #fff;
+    border: 2px solid #2c2c2a;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: center;
+  }
+  #tray h3 { margin: 0; font-size: 14px; color: #6b6a63; align-self: flex-start; }
+  .piece-wrap {
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+  }
+  .piece-wrap .cell { position: absolute; border: 1px solid rgba(0,0,0,0.25); }
+  .rotate-btn {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2c2c2a;
+    color: #fff;
+    font-size: 13px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 20;
+  }
+  .number-pad { display: flex; gap: 8px; margin-top: 16px; }
+  .number-pad button { width: 32px; height: 32px; border-radius: 6px; border: 1px solid #2c2c2a; background: #fff; cursor: pointer; }
+  .number-pad button:nth-child(even) { margin-top: 14px; }
+  .number-pad button.active { background: #2c2c2a; color: #fff; }
+  .number-pad button.disabled { opacity: 0.4; }
+  .number-pad button.complete { color: #4a2c1a; }
+  .cell.selected { outline: 3px solid #2a6f97; outline-offset: -3px; z-index: 6; }
+  .cell.value-match { box-shadow: inset 0 0 0 3px #f2b53a; }
+  .status { font-size: 14px; font-weight: 600; margin-top: 10px; min-height: 20px; }
+  .error { color: #b91c1c; font-weight: 600; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Pazuju Engine Test</h1>
+<p class="sub">Loads a puzzle XML file and drives it through the size-agnostic engine. Use this to confirm the 6&times;6, 8&times;8, and 10&times;10 puzzles all work through the same code.</p>
+
+<div class="picker">
+  <label for="puzzlePicker">Puzzle:</label>
+  <select id="puzzlePicker">
+    <option value="Puzzle1.xml">Puzzle 1 &mdash; 6&times;6</option>
+    <option value="Puzzle3.xml">Puzzle 3 &mdash; 8&times;8</option>
+    <option value="Puzzle2.xml">Puzzle 2 &mdash; 10&times;10</option>
+  </select>
+  <button id="reloadBtn">Load</button>
+</div>
+<div class="meta" id="meta"></div>
+
+<div class="layout">
+  <div id="board"></div>
+  <div id="tray">
+    <h3>Pieces to place</h3>
+  </div>
+</div>
+
+<div class="number-pad" id="numberPad"></div>
+<div class="status" id="status"></div>
+<div class="error" id="error"></div>
+
+<script src="js/pazuju-xml-loader.js"></script>
+<script src="js/pazuju-engine.js"></script>
+<script src="js/celebration.js"></script>
+<script>
+const boardEl = document.getElementById("board");
+const trayEl = document.getElementById("tray");
+const statusEl = document.getElementById("status");
+const numberPadEl = document.getElementById("numberPad");
+const metaEl = document.getElementById("meta");
+const errorEl = document.getElementById("error");
+const picker = document.getElementById("puzzlePicker");
+const reloadBtn = document.getElementById("reloadBtn");
+
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: () => launchFireworks() });
+
+async function loadSelected() {
+  errorEl.textContent = "";
+  metaEl.textContent = "Loading…";
+  try {
+    const file = picker.value;
+    const res = await fetch(file);
+    if (!res.ok) throw new Error(`Could not fetch ${file} (${res.status})`);
+    const xmlText = await res.text();
+    const puzzle = parsePazujuXML(xmlText, file);
+    game.loadPuzzle(puzzle);
+    metaEl.textContent = `${puzzle.size}×${puzzle.size} · Difficulty ${puzzle.difficulty ?? "?"} · values ${puzzle.valueMin}–${puzzle.valueMax} · ${puzzle.fixedPieces.length} on board, ${puzzle.trayPieces.length} to place`;
+  } catch (err) {
+    metaEl.textContent = "";
+    errorEl.textContent = err.message + (location.protocol === "file:" ? " (loading via file:// often blocks fetch — serve this folder over http instead)" : "");
+    console.error(err);
+  }
+}
+
+reloadBtn.addEventListener("click", loadSelected);
+picker.addEventListener("change", loadSelected);
+loadSelected();
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+body{
+    font-family: "Courier New",courier,monospace;
+    font-size: 20pt;
+    font-weight: bold;
+}
+
+span.grade{
+	font-weight:normal;
+	font-size: 12pt;
+	font-family: "Arial",arial,Serif;
+}
+
+span.copyright{
+	float:right;
+	font-weight:normal;
+	font-size: 12pt;
+	font-family: "Arial",arial,Serif;
+}
+
+div.container{
+    width:800px;
+}
+
+div.shape_container{
+    padding-top: 20px;
+    overflow: hidden;
+    width:100%;
+}
+
+div.header{
+    padding: 5px 0 15px 0;
+}
+
+div.rules{
+    font-family: "Arial",arial,Serif;
+    font-size: 10pt;
+    font-weight: normal;
+    float:left;
+    display:inline;
+    padding-right:10px;
+    width:40%;
+    overflow: auto;
+}
+
+div.walkthrough{
+	font-family: "Arial",arial,Serif;
+    font-size: 12pt;
+    font-weight: normal;
+    display:block;
+    padding-top:20px;
+}
+
+div.puzzle{
+    float:left;
+    display:inline;
+    padding-right:10px;
+}
+
+div.shape{
+    display:inline-block;
+    margin: 5px;
+}
+
+span.title-text{
+    font-weight: bold;
+    text-decoration: underline;
+    padding-left: 20px;
+    display:block;
+}
+span.puzzle_id{
+    padding-left: 20px;
+
+}
+
+table.grid td {
+    border: dashed 1px grey;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+}
+
+table.grid td.blank {
+    border: none;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+}
+
+table.shape td {
+    border: dashed 1px grey;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+}
+
+td.shape {
+    background-color: lightgrey;
+}
+
+table td.edge-top {
+    border-top: solid 2px black;
+}
+
+table td.edge-right {
+    border-right: solid 2px black;
+}
+
+table td.edge-bottom {
+    border-bottom: solid 2px black;
+}
+
+table td.edge-left {
+    border-left: solid 2px black;
+}
+
+table td.no-edge-top {
+    border-top: solid 1px white;
+}
+
+table td.no-edge-right {
+    border-right: solid 1px white;
+}
+
+table td.no-edge-bottom {
+    border-bottom: solid 1px white;
+}
+
+table td.no-edge-left {
+    border-left: solid 1px white;
+}
+
+table td.shape-top {
+    border-top: solid 2px black;
+}
+
+table td.shape-right {
+    border-right: solid 2px black;
+}
+
+table td.shape-bottom {
+    border-bottom: solid 2px black;
+}
+
+table td.shape-left {
+    border-left: solid 2px black;
+}
+
+span.page-break{
+	font-family: "Arial",arial,Serif;
+    	font-size: 16pt;
+    	font-weight: bold;
+	text-decoration: underline;
+    	display:block;
+    	page-break-before: always;
+    
+}

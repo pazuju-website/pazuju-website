@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pazuju Puzzle 308</title>
+<style>
+  body {
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    background: #f4ede1;
+    color: #2c2c2a;
+    margin: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  p.sub { color: #6b6a63; margin: 0 0 20px; font-size: 14px; text-align: center; max-width: 480px; }
+  .layout { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  #board {
+    position: relative;
+    width: 250px;
+    height: 250px;
+    background: #fff;
+    border: 2px solid #2c2c2a;
+    background-image:
+      linear-gradient(to right, #ddd 1px, transparent 1px),
+      linear-gradient(to bottom, #ddd 1px, transparent 1px);
+    background-size: 50px 50px;
+    touch-action: none;
+  }
+  .cell {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+  }
+  .cell.empty-bg { cursor: default; background: #fff; }
+  .cell.given { cursor: default; }
+  .cell.conflict { outline: 3px solid #b91c1c; outline-offset: -3px; z-index: 5; }
+  .remove-btn {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #2c2c2a;
+    color: #fff;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 20;
+  }
+  #tray {
+    width: 240px;
+    min-height: 250px;
+    background: #fff;
+    border: 2px solid #2c2c2a;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: center;
+  }
+  #tray h3 { margin: 0; font-size: 14px; color: #6b6a63; align-self: flex-start; }
+  .piece-wrap {
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+  }
+  .piece-wrap .cell { position: absolute; border: 1px solid rgba(0,0,0,0.25); }
+  .rotate-btn {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2c2c2a;
+    color: #fff;
+    font-size: 13px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 20;
+  }
+  .instructions { font-size: 13px; color: #6b6a63; text-align: center; margin-top: 16px; max-width: 560px; }
+  .status { font-size: 14px; font-weight: 600; margin-top: 10px; min-height: 20px; }
+  .meta { font-size: 12px; color: #a99; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Pazuju, Puzzle 308</h1>
+<div class="meta">Grasshopper 5&times;5 &middot; Difficulty 1.6 &middot; rebuilt from Puzzle308.html, verified against the printed page</div>
+<p class="sub">Two pieces are already on the board. Drag the remaining three pieces into place, rotating as needed. The numbers already showing are given, they stay fixed once covered. Click any other filled square to cycle 1&ndash;5.</p>
+
+<div class="layout">
+  <div id="board"></div>
+  <div id="tray">
+    <h3>Pieces to place</h3>
+  </div>
+</div>
+
+<div class="status" id="status"></div>
+
+<script>
+const SIZE = 5;
+const CELL = 50;
+
+// Numbers printed directly on the board itself, independent of any piece, taken from the HTML given-clue grid
+const BOARD_GIVENS = [
+  [null, null, 2,    null, null],
+  [null, 4,    1,    5,    null],
+  [1,    null, 4,    null, null],
+  [null, null, null, null, null],
+  [4,    5,    null, null, 1]
+];
+
+// The two pieces already sitting on the board at the start, traced from the shape-boundary classes
+const FIXED_PIECES = [
+  { id: "X", color: "#93c5fd", origin: {r:1,c:0}, cells: [[0,0],[1,0],[2,0],[3,0],[3,1]] },
+  { id: "Y", color: "#86efac", origin: {r:2,c:1}, cells: [[0,1],[1,0],[1,1],[2,1],[2,2]] }
+];
+
+// The three pieces waiting to be placed, traced from the shape-tray table. Only piece A carries a printed number.
+const TRAY_PIECES = [
+  { id: "A", color: "#fca5a5", cells: [[0,1],[1,0],[1,1],[2,1],[2,2]], givens: {"2,1": 3} },
+  { id: "B", color: "#fde68a", cells: [[0,0],[1,0],[2,0],[2,1],[2,2]], givens: {} },
+  { id: "C", color: "#c4b5fd", cells: [[0,1],[0,2],[0,3],[1,0],[1,1]], givens: {} }
+];
+
+function rotateCells(cells) {
+  const maxR = Math.max(...cells.map(c => c[0]));
+  return cells.map(([r,c]) => [c, maxR - r]);
+}
+function rotateGivens(givens, cells) {
+  const maxR = Math.max(...cells.map(c => c[0]));
+  const out = {};
+  Object.entries(givens).forEach(([key, val]) => {
+    const [r,c] = key.split(",").map(Number);
+    out[c + "," + (maxR - r)] = val;
+  });
+  return out;
+}
+
+let unplaced = TRAY_PIECES.map(p => ({ ...p, cells: p.cells.map(c => [...c]) }));
+let placed = FIXED_PIECES.map(p => ({ ...p, givens: {} }));
+let userValues = {};
+
+const boardEl = document.getElementById("board");
+const trayEl = document.getElementById("tray");
+const statusEl = document.getElementById("status");
+
+function coverGrid() {
+  const g = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+  placed.forEach(p => {
+    p.cells.forEach(([r,c]) => {
+      const rr = p.origin.r + r, cc = p.origin.c + c;
+      if (rr >= 0 && rr < SIZE && cc >= 0 && cc < SIZE) g[rr][cc] = p;
+    });
+  });
+  return g;
+}
+
+function findConflicts(grid, cover) {
+  const conflicts = new Set();
+  function scan(cells) {
+    const seen = {};
+    cells.forEach(([rr,cc]) => {
+      const v = grid[rr][cc];
+      if (!v) return;
+      const key = "v" + v;
+      (seen[key] = seen[key] || []).push([rr,cc]);
+    });
+    Object.values(seen).forEach(list => {
+      if (list.length > 1) list.forEach(([rr,cc]) => conflicts.add(rr + "," + cc));
+    });
+  }
+  for (let r = 0; r < SIZE; r++) scan(Array.from({length: SIZE}, (_,c) => [r,c]));
+  for (let c = 0; c < SIZE; c++) scan(Array.from({length: SIZE}, (_,r) => [r,c]));
+  const byPiece = {};
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    const p = cover[r][c];
+    if (p) (byPiece[p.id] = byPiece[p.id] || []).push([r,c]);
+  }
+  Object.values(byPiece).forEach(scan);
+  return conflicts;
+}
+
+function renderBoard() {
+  boardEl.innerHTML = "";
+  const cover = coverGrid();
+  const grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+  const givenGrid = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const p = cover[r][c];
+      let val = BOARD_GIVENS[r][c];
+      let given = val !== null;
+      if (p) {
+        const relKey = (r - p.origin.r) + "," + (c - p.origin.c);
+        const pieceGiven = p.givens[relKey];
+        if (pieceGiven !== undefined) { val = pieceGiven; given = true; }
+        else if (val === null) { val = userValues[r + "," + c] || null; }
+      }
+      grid[r][c] = val;
+      givenGrid[r][c] = given;
+    }
+  }
+
+  const conflicts = findConflicts(grid, cover);
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const div = document.createElement("div");
+      div.className = "cell";
+      div.style.left = (c*CELL) + "px";
+      div.style.top = (r*CELL) + "px";
+      const p = cover[r][c];
+      if (p) {
+        div.style.background = p.color;
+      } else {
+        div.classList.add("empty-bg");
+      }
+      if (givenGrid[r][c]) div.classList.add("given");
+      if (grid[r][c]) div.textContent = grid[r][c];
+      if (conflicts.has(r + "," + c)) div.classList.add("conflict");
+      if (p && !givenGrid[r][c]) {
+        div.addEventListener("click", () => {
+          const cur = userValues[r + "," + c] || 0;
+          const next = cur >= SIZE ? null : cur + 1;
+          if (next) userValues[r + "," + c] = next; else delete userValues[r + "," + c];
+          renderBoard();
+        });
+      }
+      boardEl.appendChild(div);
+    }
+  }
+
+  placed.filter(p => !FIXED_PIECES.some(fp => fp.id === p.id)).forEach(p => {
+    const btn = document.createElement("div");
+    btn.className = "remove-btn";
+    btn.textContent = "\u00d7";
+    btn.style.left = (p.origin.c*CELL - 10) + "px";
+    btn.style.top = (p.origin.r*CELL - 10) + "px";
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      unplaced.push({ id: p.id, color: p.color, cells: p.cells, givens: p.givens });
+      placed = placed.filter(x => x.id !== p.id);
+      renderAll();
+    });
+    boardEl.appendChild(btn);
+  });
+
+  const totalPieces = FIXED_PIECES.length + TRAY_PIECES.length;
+  statusEl.textContent = placed.length === totalPieces
+    ? (conflicts.size === 0 ? "All pieces placed. Fill in the numbers." : "All pieces placed, but some numbers conflict, check the red squares.")
+    : `${placed.length} of ${totalPieces} pieces placed.`;
+}
+
+function pieceBounds(cells) {
+  const rows = cells.map(c => c[0]), cols = cells.map(c => c[1]);
+  return { w: Math.max(...cols)+1, h: Math.max(...rows)+1 };
+}
+
+function renderTray() {
+  trayEl.querySelectorAll(".piece-wrap").forEach(el => el.remove());
+  unplaced.forEach(p => {
+    const b = pieceBounds(p.cells);
+    const wrap = document.createElement("div");
+    wrap.className = "piece-wrap";
+    wrap.style.width = (b.w*CELL) + "px";
+    wrap.style.height = (b.h*CELL) + "px";
+    p.cells.forEach(([r,c]) => {
+      const div = document.createElement("div");
+      div.className = "cell";
+      div.style.left = (c*CELL) + "px";
+      div.style.top = (r*CELL) + "px";
+      div.style.background = p.color;
+      const g = p.givens[r + "," + c];
+      if (g !== undefined) div.textContent = g;
+      wrap.appendChild(div);
+    });
+    const rot = document.createElement("div");
+    rot.className = "rotate-btn";
+    rot.textContent = "\u21bb";
+    rot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      p.givens = rotateGivens(p.givens, p.cells);
+      p.cells = rotateCells(p.cells);
+      renderTray();
+    });
+    wrap.appendChild(rot);
+    wrap.addEventListener("pointerdown", (e) => startDrag(e, p, wrap));
+    trayEl.appendChild(wrap);
+  });
+}
+
+function renderAll() { renderBoard(); renderTray(); }
+
+let dragging = null;
+
+function startDrag(e, piece, el) {
+  if (e.target.classList.contains("rotate-btn")) return;
+  e.preventDefault();
+  const rect = el.getBoundingClientRect();
+  dragging = { piece, el, startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
+  el.setPointerCapture(e.pointerId);
+  el.style.position = "fixed";
+  el.style.left = rect.left + "px";
+  el.style.top = rect.top + "px";
+  el.style.zIndex = 1000;
+  document.addEventListener("pointermove", onDragMove);
+  document.addEventListener("pointerup", onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragging) return;
+  const dx = e.clientX - dragging.startX;
+  const dy = e.clientY - dragging.startY;
+  dragging.el.style.left = (dragging.origLeft + dx) + "px";
+  dragging.el.style.top = (dragging.origTop + dy) + "px";
+}
+
+function onDragEnd(e) {
+  if (!dragging) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const elRect = dragging.el.getBoundingClientRect();
+  const targetCol = Math.round((elRect.left - boardRect.left) / CELL);
+  const targetRow = Math.round((elRect.top - boardRect.top) / CELL);
+  const cover = coverGrid();
+  const cells = dragging.piece.cells.map(([r,c]) => [targetRow+r, targetCol+c]);
+  const fits = cells.every(([r,c]) => r >= 0 && r < SIZE && c >= 0 && c < SIZE && !cover[r][c]);
+
+  if (fits) {
+    unplaced = unplaced.filter(p => p.id !== dragging.piece.id);
+    placed.push({ id: dragging.piece.id, color: dragging.piece.color, origin: {r: targetRow, c: targetCol}, cells: dragging.piece.cells, givens: dragging.piece.givens });
+    renderAll();
+  } else {
+    dragging.el.style.position = "";
+    dragging.el.style.left = "";
+    dragging.el.style.top = "";
+    dragging.el.style.zIndex = "";
+  }
+  document.removeEventListener("pointermove", onDragMove);
+  document.removeEventListener("pointerup", onDragEnd);
+  dragging = null;
+}
+
+renderAll();
+</script>
+</body>
+</html>

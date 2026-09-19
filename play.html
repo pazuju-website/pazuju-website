@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play Pazuju</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="images/pazuju-logo.png">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="images/pazuju-logo.png" alt="Pazuju"></a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="play.html">Play</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero" style="padding-top:0;">
+    <h1 id="dateHeading">Today&rsquo;s Puzzles</h1>
+    <p id="dateSub">Pick a size to start playing.</p>
+  </section>
+
+  <div class="date-bar">
+    <label for="archiveDate">Browse a different day:</label>
+    <input type="date" id="archiveDate">
+  </div>
+
+  <div id="loadError" class="error-msg" style="display:none;"></div>
+
+  <section class="block" id="sizeSection" style="display:none;">
+    <div class="size-grid" id="sizeGrid"></div>
+  </section>
+
+  <section class="game-area" id="gameArea">
+    <div class="puzzle-meta" id="puzzleMeta"></div>
+    <div class="game-layout">
+      <div id="board"></div>
+      <div id="tray"><h3>Pieces to place</h3></div>
+    </div>
+    <div id="numberPad" class="number-pad"></div>
+    <div class="status" id="status"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  Pazuju &middot; a daily piece-placement puzzle
+</footer>
+
+<script src="Online Game/js/pazuju-xml-loader.js"></script>
+<script src="Online Game/js/pazuju-engine.js"></script>
+<script src="Online Game/js/celebration.js"></script>
+<script>
+const sizeSection = document.getElementById("sizeSection");
+const sizeGrid = document.getElementById("sizeGrid");
+const gameArea = document.getElementById("gameArea");
+const dateHeading = document.getElementById("dateHeading");
+const dateSub = document.getElementById("dateSub");
+const archiveDateInput = document.getElementById("archiveDate");
+const loadError = document.getElementById("loadError");
+const puzzleMeta = document.getElementById("puzzleMeta");
+
+const boardEl = document.getElementById("board");
+const trayEl = document.getElementById("tray");
+const statusEl = document.getElementById("status");
+const numberPadEl = document.getElementById("numberPad");
+
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: () => launchFireworks() });
+
+function todayLocalISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateLong(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+
+function showError(message) {
+  loadError.textContent = message;
+  loadError.style.display = "block";
+  sizeSection.style.display = "none";
+  gameArea.classList.remove("active");
+}
+
+async function fetchManifest() {
+  const res = await fetch("puzzles/manifest.json");
+  if (!res.ok) throw new Error(`Could not load puzzles/manifest.json (${res.status})`);
+  return res.json();
+}
+
+async function fetchPuzzle(date, sizeInfo) {
+  const res = await fetch(`puzzles/${date}/${sizeInfo.file}`);
+  if (!res.ok) throw new Error(`Could not load puzzles/${date}/${sizeInfo.file} (${res.status})`);
+  const xmlText = await res.text();
+  return parsePazujuXML(xmlText, `${date}:${sizeInfo.key}`);
+}
+
+let manifest = null;
+let releasedDates = [];
+let sizePuzzles = {}; // sizeKey -> parsed puzzle for the currently viewed date
+let selectedSizeKey = null;
+
+async function loadDate(date) {
+  loadError.style.display = "none";
+  gameArea.classList.remove("active");
+  sizeSection.style.display = "none";
+  selectedSizeKey = null;
+
+  dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
+  dateSub.textContent = "Pick a size to start playing.";
+
+  sizePuzzles = {};
+  try {
+    for (const sizeInfo of manifest.sizes) {
+      sizePuzzles[sizeInfo.key] = await fetchPuzzle(date, sizeInfo);
+    }
+  } catch (err) {
+    showError(err.message + (location.protocol === "file:" ? " (this page needs to be served over http, not opened directly as a file)" : ""));
+    console.error(err);
+    return;
+  }
+
+  sizeGrid.innerHTML = "";
+  manifest.sizes.forEach(sizeInfo => {
+    const puzzle = sizePuzzles[sizeInfo.key];
+    const card = document.createElement("div");
+    card.className = "size-card";
+    card.innerHTML = `<div class="dims">${sizeInfo.label}</div><div class="difficulty">${sizeInfo.difficultyLabel} &middot; difficulty ${puzzle.difficulty ?? "?"}</div>`;
+    card.addEventListener("click", () => selectSize(sizeInfo.key, card));
+    sizeGrid.appendChild(card);
+  });
+  sizeSection.style.display = "block";
+}
+
+function selectSize(sizeKey, cardEl) {
+  selectedSizeKey = sizeKey;
+  [...sizeGrid.children].forEach(c => c.classList.remove("selected"));
+  cardEl.classList.add("selected");
+
+  const puzzle = sizePuzzles[sizeKey];
+  const sizeInfo = manifest.sizes.find(s => s.key === sizeKey);
+  puzzleMeta.textContent = `${sizeInfo.label} · ${sizeInfo.difficultyLabel} · difficulty ${puzzle.difficulty ?? "?"} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
+  game.loadPuzzle(puzzle);
+  gameArea.classList.add("active");
+  gameArea.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function init() {
+  try {
+    manifest = await fetchManifest();
+  } catch (err) {
+    showError(err.message + (location.protocol === "file:" ? " (this page needs to be served over http, not opened directly as a file)" : ""));
+    console.error(err);
+    return;
+  }
+
+  const today = todayLocalISO();
+  releasedDates = manifest.dates.filter(d => d <= today).sort();
+
+  if (releasedDates.length === 0) {
+    showError("No puzzles have been released yet. Check back soon.");
+    return;
+  }
+
+  const currentDate = releasedDates[releasedDates.length - 1];
+  archiveDateInput.min = releasedDates[0];
+  archiveDateInput.max = currentDate;
+  archiveDateInput.value = currentDate;
+
+  archiveDateInput.addEventListener("change", () => {
+    const chosen = archiveDateInput.value;
+    if (!releasedDates.includes(chosen)) {
+      showError("No puzzles were released on that date. Pick a highlighted date instead.");
+      return;
+    }
+    loadDate(chosen);
+  });
+
+  await loadDate(currentDate);
+}
+
+init();
+</script>
+</body>
+</html>

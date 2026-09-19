@@ -1,0 +1,11 @@
+{
+  "launchDate": "2026-09-17",
+  "sizes": [
+    { "key": "6x6", "label": "6×6", "file": "6x6.xml", "difficultyLabel": "Easy" },
+    { "key": "8x8", "label": "8×8", "file": "8x8.xml", "difficultyLabel": "Medium" },
+    { "key": "10x10", "label": "10×10", "file": "10x10.xml", "difficultyLabel": "Hard" }
+  ],
+  "dates": [
+    "2026-09-17"
+  ]
+}
