@@ -257,6 +257,12 @@ section.block h2 {
 
 #board {
   position: relative;
+  /* The engine sizes this element to exactly size*cell px for the absolutely
+     positioned cell grid to fill. Override the global border-box so that's
+     the content area, not shrunk by the border - otherwise the cell grid
+     overflows past the border on the right/bottom (top/left still look fine
+     since cells start flush with the padding edge). */
+  box-sizing: content-box;
   background-color: var(--parchment);
   border: 3px solid var(--wood-dark-1);
   border-radius: 6px;
@@ -413,6 +419,144 @@ section.block h2 {
 .status { font-size: 14px; font-weight: 700; margin-top: 16px; min-height: 20px; text-align: center; color: var(--wood-dark-2); }
 .error-msg { color: var(--danger); font-weight: 600; text-align: center; margin-top: 16px; }
 .puzzle-meta { font-size: 13px; color: var(--ink); opacity: 0.8; text-align: center; margin-bottom: 8px; }
+
+.game-toolbar {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 24px auto 0;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 10px 18px;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: none;
+}
+
+.check-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.3);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.btn.secondary .check-badge, .btn.secondary .ad-tag { background: rgba(58,42,28,0.14); }
+
+.ad-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.3);
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+
+/* Numbers "check numbers" rejects fall away rather than just vanishing. */
+.num-chip.chip-fall {
+  transition: transform 0.65s cubic-bezier(.5,-0.2,1,1), opacity 0.5s ease-in 0.15s;
+  transform: translate(var(--fall-x, 0), 420px) rotate(var(--fall-rot, 140deg));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Placeholder rewarded-ad modal (Online Game/js/ads.js). Deliberately plain
+   and neutral so it reads as third-party ad content rather than site chrome -
+   swap watchRewardedAd()'s internals for a real ad SDK later without
+   touching any caller. */
+.ad-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20,16,12,0.72);
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.ad-modal {
+  position: relative;
+  width: min(340px, 90vw);
+  background: #efefef;
+  color: #222;
+  border-radius: 10px;
+  padding: 30px 22px 22px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.ad-modal-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.ad-modal-placeholder {
+  margin: 6px 0 20px;
+  font-size: 14px;
+  color: #555;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ad-modal-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #ddd;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ad-modal-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #4a90d9;
+}
+
+.ad-modal-countdown {
+  font-size: 13px;
+  color: #777;
+}
+
+.ad-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: #e2e2e2;
+  color: #444;
+  font-size: 16px;
+  line-height: 26px;
+  cursor: pointer;
+}
+
+.ad-modal-close:hover { background: #d2d2d2; }
 
 .site-footer {
   text-align: center;

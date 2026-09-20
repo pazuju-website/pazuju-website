@@ -3,16 +3,18 @@
 // produced by pazuju-xml-loader.js and renders/drives a single puzzle instance
 // inside caller-supplied DOM elements.
 class PazujuGame {
-  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved }) {
+  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange }) {
     this.boardEl = boardEl;
     this.trayEl = trayEl;
     this.statusEl = statusEl;
     this.numberPadEl = numberPadEl;
     this.onSolved = onSolved;
+    this.onStateChange = onStateChange;
     this.dragging = null;
     this.selectedCell = null;
     this.highlightValue = null;
     this._hasCelebrated = false;
+    this._animating = false;
 
     this._onDragMove = this._onDragMove.bind(this);
     this._onDragEnd = this._onDragEnd.bind(this);
@@ -25,6 +27,7 @@ class PazujuGame {
     this.valueMin = puzzle.valueMin;
     this.valueMax = puzzle.valueMax;
     this.boardGivens = puzzle.boardGivens;
+    this.solutionGrid = puzzle.solutionGrid;
     this.fixedPieceIds = new Set(puzzle.fixedPieces.map(p => p.id));
 
     const palette = this._buildPalette(puzzle.fixedPieces.length + puzzle.trayPieces.length);
@@ -42,11 +45,13 @@ class PazujuGame {
       color: palette[colorIndex++],
       cells: p.cells.map(c => [...c]),
       givens: { ...p.givens },
+      solved: { origin: { ...p.solved.origin }, cells: p.solved.cells.map(c => [...c]), givens: { ...p.solved.givens } },
     }));
     this.userValues = {};
     this.selectedCell = null;
     this.highlightValue = null;
     this._hasCelebrated = false;
+    this._animating = false;
 
     this.cell = this._computeCellSize(this.size);
     this.trayCell = Math.max(16, Math.round(this.cell * 0.62));
@@ -116,7 +121,15 @@ class PazujuGame {
     boardEl.innerHTML = "";
     const cover = this._coverGrid();
     const grid = Array.from({ length: size }, () => Array(size).fill(null));
+    const givenOnlyGrid = Array.from({ length: size }, () => Array(size).fill(null));
     const givenGrid = Array.from({ length: size }, () => Array(size).fill(false));
+    // A piece placed in the wrong rotation can carry one of its own printed
+    // givens onto a square that already has a different given printed on the
+    // board itself - two clues can't both be true, so that's a placement
+    // conflict distinct from (and not caught by) the row/col/piece
+    // duplicate-value scan below, which only ever sees the one value that
+    // happened to win the overwrite.
+    const givenCollisions = new Set();
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
@@ -127,6 +140,7 @@ class PazujuGame {
           const relKey = (r - p.origin.r) + "," + (c - p.origin.c);
           const pieceGiven = p.givens[relKey];
           if (pieceGiven !== undefined) {
+            if (val !== null && val !== pieceGiven) givenCollisions.add(r + "," + c);
             val = pieceGiven;
             given = true;
           } else if (val === null) {
@@ -135,13 +149,23 @@ class PazujuGame {
         }
         grid[r][c] = val;
         givenGrid[r][c] = given;
+        givenOnlyGrid[r][c] = given ? val : null;
       }
     }
 
     const conflicts = this._findConflicts(grid, cover);
+    givenCollisions.forEach(k => conflicts.add(k));
+    // Conflicts that exist among the clues alone (piece givens vs. board
+    // givens vs. each other), ignoring anything the player has typed in -
+    // these can only be fixed by re-placing a piece, so they gate whether
+    // the puzzle is even ready to move into the number-filling stage.
+    const givenConflicts = new Set([...givenCollisions, ...this._findConflicts(givenOnlyGrid, cover)]);
+
     const totalPieces = this.fixedPieceIds.size + this._totalTrayCount;
     const allPlaced = this.placed.length === totalPieces;
     this._allPiecesPlaced = allPlaced;
+    const readyForNumbers = allPlaced && givenConflicts.size === 0;
+    this._readyForNumbers = readyForNumbers;
 
     const valueCounts = {};
     for (let r = 0; r < size; r++) {
@@ -165,13 +189,15 @@ class PazujuGame {
 
     if (this.selectedCell) {
       const { r, c } = this.selectedCell;
-      if (!cover[r][c] || givenGrid[r][c] || !allPlaced) this.selectedCell = null;
+      if (!cover[r][c] || givenGrid[r][c] || !readyForNumbers) this.selectedCell = null;
     }
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const div = document.createElement("div");
         div.className = "cell";
+        div.dataset.r = r;
+        div.dataset.c = c;
         div.style.width = cell + "px";
         div.style.height = cell + "px";
         div.style.left = (c * cell) + "px";
@@ -205,9 +231,10 @@ class PazujuGame {
         if (val !== null || editable) {
           if (!p && val !== null) div.style.cursor = "pointer";
           div.addEventListener("click", () => {
+            if (this._animating) return;
             const wasSelected = this.selectedCell && this.selectedCell.r === r && this.selectedCell.c === c;
             this.highlightValue = val !== null ? (this.highlightValue === val ? null : val) : null;
-            this.selectedCell = (editable && allPlaced) ? (wasSelected ? null : { r, c }) : null;
+            this.selectedCell = (editable && readyForNumbers) ? (wasSelected ? null : { r, c }) : null;
             this._renderAll();
           });
         }
@@ -215,7 +242,7 @@ class PazujuGame {
       }
     }
 
-    if (!allPlaced) {
+    if (!readyForNumbers) {
       this.placed
         .filter(p => !this.fixedPieceIds.has(p.id))
         .forEach(p => {
@@ -226,7 +253,7 @@ class PazujuGame {
           btn.style.top = (p.origin.r * cell - cell * 0.2) + "px";
           btn.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.unplaced.push({ id: p.id, color: p.color, cells: p.cells, givens: p.givens });
+            this.unplaced.push({ id: p.id, color: p.color, cells: p.cells, givens: p.givens, solved: p.solved });
             this.placed = this.placed.filter(x => x.id !== p.id);
             this._renderAll();
           });
@@ -238,7 +265,9 @@ class PazujuGame {
       ? `${this.placed.length} of ${totalPieces} pieces placed.`
       : solved
         ? "🎉 Solved! Great job."
-        : (conflicts.size === 0 ? "All pieces placed. Fill in the numbers." : "All pieces placed, but some numbers conflict, check the red squares.");
+        : givenConflicts.size > 0
+          ? "Two clues conflict on the red squares - re-place that piece (rotate or try another spot) before filling in numbers."
+          : (conflicts.size === 0 ? "All pieces placed. Fill in the numbers." : "All pieces placed, but some numbers conflict, check the red squares.");
   }
 
   _pieceBounds(cells) {
@@ -306,6 +335,74 @@ class PazujuGame {
     this._renderBoard();
     this._renderTray();
     this._renderNumberPad();
+    if (typeof this.onStateChange === "function") {
+      this.onStateChange({
+        readyForNumbers: this._readyForNumbers,
+        allPiecesPlaced: this._allPiecesPlaced,
+        hasUserValues: Object.keys(this.userValues).length > 0,
+      });
+    }
+  }
+
+  // Compares every player-entered number against the puzzle's solution and
+  // animates the wrong ones off the board instead of just deleting them.
+  // Only ever touches userValues - givens are guaranteed conflict-free by the
+  // time readyForNumbers is true (see _renderBoard), so there's nothing of
+  // the puzzle's own clues for this to second-guess.
+  checkNumbers() {
+    if (!this._readyForNumbers || this._animating) return { checked: 0, wrong: 0 };
+    const wrong = [];
+    Object.keys(this.userValues).forEach(key => {
+      const [r, c] = key.split(",").map(Number);
+      if (this.userValues[key] !== this.solutionGrid[r][c]) wrong.push({ r, c, key });
+    });
+    const checked = Object.keys(this.userValues).length;
+    if (wrong.length === 0) return { checked, wrong: 0 };
+
+    this._animating = true;
+    this._animateFallAway(wrong, () => {
+      wrong.forEach(({ key }) => delete this.userValues[key]);
+      this._animating = false;
+      this._renderAll();
+    });
+    return { checked, wrong: wrong.length };
+  }
+
+  // Animates the given board cells' number chips falling away, then calls
+  // onDone. Board interaction is blocked (see the _animating checks above)
+  // for the duration so a re-render can't cut the animation off early.
+  _animateFallAway(cells, onDone) {
+    const chipEls = cells
+      .map(({ r, c }) => this.boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"] .num-chip`))
+      .filter(Boolean);
+
+    if (chipEls.length === 0) { onDone(); return; }
+
+    chipEls.forEach((chip, i) => {
+      const drift = Math.round(Math.random() * 70 - 35);
+      const spin = Math.round(Math.random() * 320 - 160);
+      chip.style.setProperty("--fall-x", drift + "px");
+      chip.style.setProperty("--fall-rot", spin + "deg");
+      chip.style.transitionDelay = (i * 70) + "ms";
+      void chip.offsetWidth; // force layout so the delayed transition starts from here, not the end state
+      chip.classList.add("chip-fall");
+    });
+
+    const totalMs = 700 + (chipEls.length - 1) * 70;
+    setTimeout(onDone, totalMs);
+  }
+
+  // Auto-places every remaining tray piece at its correct solved position and
+  // rotation (regardless of whatever rotation it currently sits at in the
+  // tray), skipping straight to the number-filling stage.
+  skipAssembly() {
+    if (this.unplaced.length === 0) return;
+    this.unplaced.forEach(piece => {
+      const { origin, cells, givens } = piece.solved;
+      this.placed.push({ id: piece.id, color: piece.color, origin: { ...origin }, cells: cells.map(c => [...c]), givens: { ...givens } });
+    });
+    this.unplaced = [];
+    this._renderAll();
   }
 
   // Staggered number pad below the board: tap a board square to select it
@@ -314,7 +411,7 @@ class PazujuGame {
   _renderNumberPad() {
     if (!this.numberPadEl) return;
     this.numberPadEl.innerHTML = "";
-    if (!this._allPiecesPlaced) {
+    if (!this._readyForNumbers) {
       this.numberPadEl.style.display = "none";
       return;
     }
@@ -333,7 +430,7 @@ class PazujuGame {
   }
 
   _onPadClick(value) {
-    if (!this.selectedCell) return;
+    if (this._animating || !this.selectedCell) return;
     const { r, c } = this.selectedCell;
     const key = r + "," + c;
     if (this.userValues[key] === value) delete this.userValues[key];
@@ -391,7 +488,7 @@ class PazujuGame {
     if (fits) {
       const piece = this.dragging.piece;
       this.unplaced = this.unplaced.filter(p => p.id !== piece.id);
-      this.placed.push({ id: piece.id, color: piece.color, origin: { r: targetRow, c: targetCol }, cells: piece.cells, givens: piece.givens });
+      this.placed.push({ id: piece.id, color: piece.color, origin: { r: targetRow, c: targetCol }, cells: piece.cells, givens: piece.givens, solved: piece.solved });
       this._renderAll();
     } else {
       // Didn't land on an open spot - drop it back in the tray at tray size.

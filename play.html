@@ -43,6 +43,10 @@
       <div id="board"></div>
       <div id="tray"><h3>Pieces to place</h3></div>
     </div>
+    <div class="game-toolbar" id="gameToolbar">
+      <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag">Watch ad</span></button>
+      <button type="button" class="btn toolbar-btn" id="checkNumbersBtn">✓ Check numbers <span class="check-badge" id="checkBadge"></span></button>
+    </div>
     <div id="numberPad" class="number-pad"></div>
     <div class="status" id="status"></div>
   </section>
@@ -55,6 +59,7 @@
 <script src="Online Game/js/pazuju-xml-loader.js"></script>
 <script src="Online Game/js/pazuju-engine.js"></script>
 <script src="Online Game/js/celebration.js"></script>
+<script src="Online Game/js/ads.js"></script>
 <script>
 const sizeSection = document.getElementById("sizeSection");
 const sizeGrid = document.getElementById("sizeGrid");
@@ -70,7 +75,82 @@ const trayEl = document.getElementById("tray");
 const statusEl = document.getElementById("status");
 const numberPadEl = document.getElementById("numberPad");
 
-const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: () => launchFireworks() });
+const gameToolbar = document.getElementById("gameToolbar");
+const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
+const checkNumbersBtn = document.getElementById("checkNumbersBtn");
+const checkBadge = document.getElementById("checkBadge");
+
+// How many "check numbers" uses each board size gets for free per puzzle
+// (harder/bigger sizes get more, since there's more to double-check).
+// Anything beyond that requires watching a rewarded ad (see ads.js).
+const SIZE_FREE_CHECKS = { "6x6": 1, "8x8": 2, "10x10": 3 };
+
+function checksStorageKey(date, sizeKey) {
+  return `pazuju-checks-${date}-${sizeKey}`;
+}
+
+function getChecksUsed(date, sizeKey) {
+  try {
+    return parseInt(localStorage.getItem(checksStorageKey(date, sizeKey)) || "0", 10);
+  } catch {
+    return 0; // private browsing / storage disabled - just treat as unused each load
+  }
+}
+
+function recordCheckUsed(date, sizeKey) {
+  try {
+    localStorage.setItem(checksStorageKey(date, sizeKey), String(getChecksUsed(date, sizeKey) + 1));
+  } catch {
+    /* storage unavailable - free checks just won't persist across reloads */
+  }
+}
+
+function getRemainingFreeChecks(date, sizeKey) {
+  const total = SIZE_FREE_CHECKS[sizeKey] ?? 0;
+  return Math.max(0, total - getChecksUsed(date, sizeKey));
+}
+
+// Keeps the toolbar in sync with the game's current phase - called by the
+// engine itself after every render (see onStateChange below).
+function updateToolbar(state) {
+  if (!selectedSizeKey || !state) {
+    gameToolbar.style.display = "none";
+    return;
+  }
+  gameToolbar.style.display = "flex";
+  skipAssemblyBtn.style.display = state.readyForNumbers ? "none" : "";
+  checkNumbersBtn.style.display = state.readyForNumbers ? "" : "none";
+  checkNumbersBtn.disabled = !state.hasUserValues;
+
+  const remaining = getRemainingFreeChecks(currentPuzzleDate, selectedSizeKey);
+  checkBadge.textContent = remaining > 0 ? String(remaining) : "Ad";
+  checkNumbersBtn.title = remaining > 0
+    ? `${remaining} free check${remaining === 1 ? "" : "s"} left today`
+    : "Watch an ad to unlock another check";
+}
+
+skipAssemblyBtn.addEventListener("click", async () => {
+  skipAssemblyBtn.disabled = true;
+  const rewarded = await PazujuAds.watchRewardedAd();
+  skipAssemblyBtn.disabled = false;
+  if (rewarded) game.skipAssembly();
+});
+
+checkNumbersBtn.addEventListener("click", async () => {
+  const remaining = getRemainingFreeChecks(currentPuzzleDate, selectedSizeKey);
+  if (remaining > 0) {
+    recordCheckUsed(currentPuzzleDate, selectedSizeKey);
+    game.checkNumbers();
+    updateToolbar({ readyForNumbers: true, hasUserValues: true });
+  } else {
+    checkNumbersBtn.disabled = true;
+    const rewarded = await PazujuAds.watchRewardedAd();
+    checkNumbersBtn.disabled = false;
+    if (rewarded) game.checkNumbers();
+  }
+});
+
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: () => launchFireworks(), onStateChange: updateToolbar });
 
 function todayLocalISO() {
   const d = new Date();
@@ -119,12 +199,14 @@ let manifest = null;
 let releasedDates = [];
 let sizePuzzles = {}; // sizeKey -> parsed puzzle for the currently viewed date
 let selectedSizeKey = null;
+let currentPuzzleDate = null;
 
 async function loadDate(date) {
   loadError.style.display = "none";
   gameArea.classList.remove("active");
   sizeSection.style.display = "none";
   selectedSizeKey = null;
+  currentPuzzleDate = date;
 
   dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
   dateSub.textContent = "Pick a size to start playing.";

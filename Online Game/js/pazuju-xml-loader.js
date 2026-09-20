@@ -97,6 +97,14 @@ function parsePazujuXML(xmlText, seed) {
     if (t.active && !t.onBlock) boardGivens[t.row][t.col] = t.number;
   });
 
+  // Every tile carries its correct final number, active (a clue) or not -
+  // that's the puzzle's solved layout, straight from the source data. Used
+  // by the "check numbers" feature to grade what the player typed in, and by
+  // "skip assembly" (via each tray piece's `solved` below) to know where a
+  // piece truly belongs.
+  const solutionGrid = Array.from({ length: size }, () => Array(size).fill(null));
+  tiles.forEach(t => { solutionGrid[t.row][t.col] = t.number; });
+
   const byBlock = new Map();
   tiles.forEach(t => {
     if (!byBlock.has(t.block)) byBlock.set(t.block, []);
@@ -121,16 +129,20 @@ function parsePazujuXML(xmlText, seed) {
     } else {
       // Tray pieces are derived straight from their solved-board position, so
       // scramble each one's orientation before it reaches the tray - otherwise
-      // the player never actually needs the rotate button.
+      // the player never actually needs the rotate button. Keep the true
+      // pre-scramble origin/cells/givens around as `solved` so "skip
+      // assembly" can snap the piece straight to its correct spot later,
+      // independent of whatever rotation it's scrambled to here.
+      const solved = { origin: { r: minR, c: minC }, cells: cells.map(c => [...c]), givens: { ...givens } };
       const rand = seed !== undefined ? _mulberry32(_hashSeedString(`${seed}:${blockId}`)) : Math.random;
       const rotations = Math.floor(rand() * 4);
       for (let i = 0; i < rotations; i++) {
         piece.givens = _rotateGivens(piece.givens, piece.cells);
         piece.cells = _rotateCells(piece.cells);
       }
-      trayPieces.push(piece);
+      trayPieces.push({ ...piece, solved });
     }
   });
 
-  return { size, difficulty, valueMin, valueMax, boardGivens, fixedPieces, trayPieces };
+  return { size, difficulty, valueMin, valueMax, boardGivens, solutionGrid, fixedPieces, trayPieces };
 }
