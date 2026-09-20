@@ -199,6 +199,14 @@ section.block h2 {
   border-color: var(--rust-dark);
 }
 
+.size-card .plaque {
+  width: 100%;
+  max-width: 140px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 3px 8px rgba(67,31,17,0.3);
+}
+
 .size-card .dims {
   font-size: 26px;
   font-weight: 700;

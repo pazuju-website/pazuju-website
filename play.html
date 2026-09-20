@@ -85,6 +85,16 @@ function formatDateLong(iso) {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
+// Difficulty is a property of the puzzle itself (how many solving rules it
+// takes), not of the board size - each size can land at any tier on a given day.
+function difficultyCategory(value) {
+  if (value == null) return "?";
+  if (value < 2.0) return "Beginner";
+  if (value < 3.0) return "Intermediate";
+  if (value < 6.0) return "Advanced";
+  return "Expert";
+}
+
 function showError(message) {
   loadError.textContent = message;
   loadError.style.display = "block";
@@ -135,7 +145,7 @@ async function loadDate(date) {
     const puzzle = sizePuzzles[sizeInfo.key];
     const card = document.createElement("div");
     card.className = "size-card";
-    card.innerHTML = `<div class="dims">${sizeInfo.label}</div><div class="difficulty">${sizeInfo.difficultyLabel} &middot; difficulty ${puzzle.difficulty ?? "?"}</div>`;
+    card.innerHTML = `<img class="plaque" src="${sizeInfo.icon}" alt="${sizeInfo.creature}"><div class="dims">${sizeInfo.label}</div><div class="difficulty">${difficultyCategory(puzzle.difficulty)}</div>`;
     card.addEventListener("click", () => selectSize(sizeInfo.key, card));
     sizeGrid.appendChild(card);
   });
@@ -149,7 +159,7 @@ function selectSize(sizeKey, cardEl) {
 
   const puzzle = sizePuzzles[sizeKey];
   const sizeInfo = manifest.sizes.find(s => s.key === sizeKey);
-  puzzleMeta.textContent = `${sizeInfo.label} · ${sizeInfo.difficultyLabel} · difficulty ${puzzle.difficulty ?? "?"} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
+  puzzleMeta.textContent = `${sizeInfo.creature} ${sizeInfo.label} · ${difficultyCategory(puzzle.difficulty)} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
   game.loadPuzzle(puzzle);
   gameArea.classList.add("active");
   gameArea.scrollIntoView({ behavior: "smooth", block: "start" });

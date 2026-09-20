@@ -5,122 +5,125 @@
   <blocksOnGrid>
     <blockNum>4</blockNum>
     <blockNum>2</blockNum>
-    <blockNum>5</blockNum>
-    <blockNum>6</blockNum>
+    <blockNum>7</blockNum>
+    <blockNum>1</blockNum>
   </blocksOnGrid>
   <tiles>
     <tile>
-      <number>3</number>
+      <number>7</number>
       <row>1</row>
       <col>1</col>
       <block>0</block>
       <active>NO</active>
     </tile>
     <tile>
-      <number>6</number>
+      <number>5</number>
       <row>1</row>
       <col>2</col>
       <block>0</block>
       <active>NO</active>
     </tile>
     <tile>
-      <number>4</number>
+      <number>1</number>
       <row>1</row>
       <col>3</col>
       <block>0</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>1</row>
-      <col>4</col>
-      <block>0</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>1</row>
-      <col>5</col>
-      <block>3</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>1</row>
-      <col>6</col>
-      <block>3</block>
       <active>NO</active>
     </tile>
     <tile>
       <number>8</number>
       <row>1</row>
-      <col>7</col>
-      <block>3</block>
+      <col>4</col>
+      <block>0</block>
       <active>YES</active>
-      <onBlock>NO</onBlock>
+      <onBlock>YES</onBlock>
     </tile>
     <tile>
-      <number>5</number>
+      <number>3</number>
       <row>1</row>
-      <col>8</col>
-      <block>3</block>
+      <col>5</col>
+      <block>6</block>
       <active>NO</active>
     </tile>
     <tile>
-      <number>1</number>
-      <row>2</row>
-      <col>1</col>
+      <number>6</number>
+      <row>1</row>
+      <col>6</col>
+      <block>7</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>1</row>
+      <col>7</col>
       <block>7</block>
       <active>NO</active>
     </tile>
     <tile>
       <number>2</number>
-      <row>2</row>
-      <col>2</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>2</row>
-      <col>3</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>5</number>
-      <row>2</row>
-      <col>4</col>
-      <block>0</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>2</row>
-      <col>5</col>
-      <block>3</block>
+      <row>1</row>
+      <col>8</col>
+      <block>7</block>
       <active>NO</active>
     </tile>
     <tile>
       <number>6</number>
       <row>2</row>
-      <col>6</col>
-      <block>3</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>2</row>
-      <col>7</col>
-      <block>3</block>
+      <col>1</col>
+      <block>0</block>
       <active>YES</active>
       <onBlock>NO</onBlock>
     </tile>
     <tile>
       <number>8</number>
       <row>2</row>
+      <col>2</col>
+      <block>4</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>2</row>
+      <col>3</col>
+      <block>0</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>5</number>
+      <row>2</row>
+      <col>4</col>
+      <block>6</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>2</row>
+      <col>5</col>
+      <block>6</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>2</row>
+      <col>6</col>
+      <block>6</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>2</row>
+      <col>7</col>
+      <block>7</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>2</row>
       <col>8</col>
-      <block>5</block>
+      <block>3</block>
       <active>YES</active>
       <onBlock>NO</onBlock>
     </tile>
@@ -128,19 +131,19 @@
       <number>5</number>
       <row>3</row>
       <col>1</col>
-      <block>7</block>
+      <block>4</block>
       <active>YES</active>
       <onBlock>NO</onBlock>
     </tile>
     <tile>
-      <number>4</number>
+      <number>3</number>
       <row>3</row>
       <col>2</col>
-      <block>1</block>
+      <block>4</block>
       <active>NO</active>
     </tile>
     <tile>
-      <number>1</number>
+      <number>4</number>
       <row>3</row>
       <col>3</col>
       <block>0</block>
@@ -150,7 +153,7 @@
       <number>2</number>
       <row>3</row>
       <col>4</col>
-      <block>0</block>
+      <block>6</block>
       <active>NO</active>
     </tile>
     <tile>
@@ -161,324 +164,323 @@
       <active>NO</active>
     </tile>
     <tile>
-      <number>3</number>
+      <number>1</number>
       <row>3</row>
       <col>6</col>
+      <block>7</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>3</row>
+      <col>7</col>
+      <block>7</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>3</row>
+      <col>8</col>
+      <block>3</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>4</row>
+      <col>1</col>
+      <block>2</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>4</row>
+      <col>2</col>
+      <block>4</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>4</row>
+      <col>3</col>
+      <block>0</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>4</row>
+      <col>4</col>
+      <block>6</block>
+      <active>YES</active>
+      <onBlock>YES</onBlock>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>4</row>
+      <col>5</col>
+      <block>6</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>8</number>
+      <row>4</row>
+      <col>6</col>
+      <block>7</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>5</number>
+      <row>4</row>
+      <col>7</col>
+      <block>7</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>4</row>
+      <col>8</col>
+      <block>3</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>8</number>
+      <row>5</row>
+      <col>1</col>
+      <block>2</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>5</row>
+      <col>2</col>
+      <block>4</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>5</row>
+      <col>3</col>
+      <block>4</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>5</row>
+      <col>4</col>
+      <block>4</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>5</row>
+      <col>5</col>
+      <block>4</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>5</number>
+      <row>5</row>
+      <col>6</col>
+      <block>1</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>5</row>
+      <col>7</col>
+      <block>5</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>5</row>
+      <col>8</col>
+      <block>3</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>6</row>
+      <col>1</col>
+      <block>2</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>6</row>
+      <col>2</col>
+      <block>2</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>5</number>
+      <row>6</row>
+      <col>3</col>
+      <block>2</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>6</row>
+      <col>4</col>
+      <block>1</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>6</row>
+      <col>5</col>
+      <block>1</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>6</row>
+      <col>6</col>
+      <block>1</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>6</row>
+      <col>7</col>
+      <block>5</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>8</number>
+      <row>6</row>
+      <col>8</col>
+      <block>3</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>7</row>
+      <col>1</col>
+      <block>2</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>7</row>
+      <col>2</col>
+      <block>1</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>7</row>
+      <col>3</col>
+      <block>1</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>7</row>
+      <col>4</col>
+      <block>1</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>5</number>
+      <row>7</row>
+      <col>5</col>
+      <block>5</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>7</row>
+      <col>6</col>
+      <block>5</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>8</number>
+      <row>7</row>
+      <col>7</col>
+      <block>5</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>7</row>
+      <col>8</col>
+      <block>3</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>1</number>
+      <row>8</row>
+      <col>1</col>
+      <block>2</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>6</number>
+      <row>8</row>
+      <col>2</col>
+      <block>2</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>8</number>
+      <row>8</row>
+      <col>3</col>
+      <block>1</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>3</number>
+      <row>8</row>
+      <col>4</col>
+      <block>5</block>
+      <active>NO</active>
+    </tile>
+    <tile>
+      <number>7</number>
+      <row>8</row>
+      <col>5</col>
+      <block>5</block>
+      <active>YES</active>
+      <onBlock>NO</onBlock>
+    </tile>
+    <tile>
+      <number>4</number>
+      <row>8</row>
+      <col>6</col>
+      <block>5</block>
+      <active>YES</active>
+      <onBlock>YES</onBlock>
+    </tile>
+    <tile>
+      <number>2</number>
+      <row>8</row>
+      <col>7</col>
       <block>3</block>
       <active>YES</active>
       <onBlock>YES</onBlock>
     </tile>
     <tile>
-      <number>7</number>
-      <row>3</row>
-      <col>7</col>
-      <block>5</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>3</row>
-      <col>8</col>
-      <block>5</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>4</row>
-      <col>1</col>
-      <block>7</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>4</row>
-      <col>2</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>8</number>
-      <row>4</row>
-      <col>3</col>
-      <block>0</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>4</row>
-      <col>4</col>
-      <block>6</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>5</number>
-      <row>4</row>
-      <col>5</col>
-      <block>6</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>4</row>
-      <col>6</col>
-      <block>6</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>4</row>
-      <col>7</col>
-      <block>5</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>4</row>
-      <col>8</col>
-      <block>4</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>5</row>
-      <col>1</col>
-      <block>7</block>
-      <active>YES</active>
-      <onBlock>YES</onBlock>
-    </tile>
-    <tile>
-      <number>8</number>
-      <row>5</row>
-      <col>2</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>5</row>
-      <col>3</col>
-      <block>6</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>5</row>
-      <col>4</col>
-      <block>6</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>5</row>
-      <col>5</col>
-      <block>2</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>5</number>
-      <row>5</row>
-      <col>6</col>
-      <block>5</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>5</row>
-      <col>7</col>
-      <block>5</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>5</row>
-      <col>8</col>
-      <block>4</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>8</number>
-      <row>6</row>
-      <col>1</col>
-      <block>7</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>5</number>
-      <row>6</row>
-      <col>2</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>6</row>
-      <col>3</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>6</row>
-      <col>4</col>
-      <block>6</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>6</row>
-      <col>5</col>
-      <block>2</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>6</row>
-      <col>6</col>
-      <block>5</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>6</row>
-      <col>7</col>
-      <block>5</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>6</row>
-      <col>8</col>
-      <block>4</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>7</row>
-      <col>1</col>
-      <block>7</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>7</row>
-      <col>2</col>
-      <block>7</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>7</row>
-      <col>3</col>
-      <block>1</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>7</row>
-      <col>4</col>
-      <block>6</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>7</row>
-      <col>5</col>
-      <block>2</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>8</number>
-      <row>7</row>
-      <col>6</col>
-      <block>4</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>5</number>
-      <row>7</row>
-      <col>7</col>
-      <block>4</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>7</row>
-      <col>8</col>
-      <block>4</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>2</number>
-      <row>8</row>
-      <col>1</col>
-      <block>7</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>7</number>
-      <row>8</row>
-      <col>2</col>
-      <block>2</block>
-      <active>NO</active>
-    </tile>
-    <tile>
       <number>5</number>
       <row>8</row>
-      <col>3</col>
-      <block>2</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>8</number>
-      <row>8</row>
-      <col>4</col>
-      <block>2</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>4</number>
-      <row>8</row>
-      <col>5</col>
-      <block>2</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>1</number>
-      <row>8</row>
-      <col>6</col>
-      <block>2</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
-    </tile>
-    <tile>
-      <number>6</number>
-      <row>8</row>
-      <col>7</col>
-      <block>4</block>
-      <active>NO</active>
-    </tile>
-    <tile>
-      <number>3</number>
-      <row>8</row>
       <col>8</col>
-      <block>4</block>
-      <active>YES</active>
-      <onBlock>NO</onBlock>
+      <block>3</block>
+      <active>NO</active>
     </tile>
   </tiles>
 </level>
