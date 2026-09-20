@@ -21,28 +21,78 @@
 </header>
 
 <main>
-  <section class="hero">
-    <h1>A daily puzzle where you build the board yourself</h1>
-    <p>
-      Pazuju plays like Sudoku, with one twist: the grid isn&rsquo;t given to you whole.
-      You rotate and drag oddly-shaped pieces into place first, then fill in the numbers.
-      Three new puzzles every day, in three sizes.
-    </p>
-    <a class="btn" href="play.html">Play Today&rsquo;s Puzzles</a>
+  <section class="hero hero-split">
+    <div class="hero-copy">
+      <h1>A daily puzzle where you build the board yourself</h1>
+      <p>
+        Pazuju plays like Sudoku, with one twist: the grid isn&rsquo;t given to you whole.
+        You rotate and drag oddly-shaped pieces into place first, then fill in the numbers.
+        Three new puzzles every day, in three sizes.
+      </p>
+      <div class="hero-actions">
+        <a class="btn" href="play.html">Play Today&rsquo;s Puzzles</a>
+        <span class="hero-note">Free to play &middot; no sign-up</span>
+      </div>
+    </div>
+
+    <div class="hero-demo">
+      <div class="demo-frame" id="demoFrame">
+        <div class="demo-badge">Try it right here</div>
+        <div class="demo-play-area">
+          <div id="board"></div>
+          <div id="tray"><h3>Pieces to place</h3></div>
+        </div>
+        <div id="numberPad" class="number-pad demo-number-pad"></div>
+        <div class="status demo-status" id="status"></div>
+      </div>
+    </div>
   </section>
 
   <section class="block">
     <h2>How to play</h2>
-    <div class="rules-grid">
+    <div class="rules-grid how-grid">
       <div class="rule-card">
+        <div class="diagram diagram-assemble">
+          <div class="mini-grid">
+            <span class="mc filled hue-a"></span><span class="mc filled hue-a"></span><span class="mc"></span><span class="mc"></span>
+            <span class="mc filled hue-b"></span><span class="mc"></span><span class="mc target"></span><span class="mc target"></span>
+            <span class="mc"></span><span class="mc"></span><span class="mc"></span><span class="mc"></span>
+          </div>
+          <span class="diagram-arrow">&larr;</span>
+          <span class="mini-piece hue-c"></span>
+        </div>
         <h3>1. Assemble the board</h3>
         <p>Some pieces already sit on the board. Drag the rest from the tray and rotate them until every piece fits without overlapping, filling the grid completely.</p>
       </div>
       <div class="rule-card">
+        <div class="diagram diagram-numbers">
+          <div class="mini-grid mini-grid-single">
+            <span class="mc editable">
+              <span class="cycle-num n1">1</span>
+              <span class="cycle-num n2">2</span>
+              <span class="cycle-num n3">3</span>
+              <span class="cycle-num n4">4</span>
+            </span>
+          </div>
+          <span class="diagram-caption">tap to cycle</span>
+        </div>
         <h3>2. Fill in the numbers</h3>
         <p>Once a square is covered, click it to cycle through the possible numbers. Some numbers are given from the start and can&rsquo;t be changed.</p>
       </div>
       <div class="rule-card">
+        <div class="diagram diagram-unique">
+          <div class="mini-grid mini-grid-4">
+            <span class="mc num hl-row hl-col hl-piece">1</span><span class="mc num hl-row hl-piece">2</span><span class="mc num hl-row">3</span><span class="mc num hl-row">4</span>
+            <span class="mc num hl-col hl-piece">3</span><span class="mc num hl-piece">4</span><span class="mc num">1</span><span class="mc num">2</span>
+            <span class="mc num hl-col">2</span><span class="mc num">1</span><span class="mc num">4</span><span class="mc num">3</span>
+            <span class="mc num hl-col">4</span><span class="mc num">3</span><span class="mc num">2</span><span class="mc num">1</span>
+          </div>
+          <span class="diagram-legend">
+            <span class="legend-item"><i class="dot dot-row"></i>row</span>
+            <span class="legend-item"><i class="dot dot-col"></i>column</span>
+            <span class="legend-item"><i class="dot dot-piece"></i>piece</span>
+          </span>
+        </div>
         <h3>3. One of each, everywhere</h3>
         <p>Just like Sudoku, every number can appear only once in each row, each column, and inside each individual piece &mdash; regardless of the piece&rsquo;s shape or size.</p>
       </div>
@@ -73,5 +123,58 @@
   Pazuju &middot; a daily piece-placement puzzle
 </footer>
 
+<script src="Online Game/js/pazuju-xml-loader.js"></script>
+<script src="Online Game/js/pazuju-engine.js"></script>
+<script>
+// A live, playable taste of today's easiest puzzle, right on the landing
+// page - reuses the real engine (not a mockup), just at a smaller size. If
+// anything about it fails to load, the frame quietly falls back to a plain
+// invite to the full Play page instead of showing a broken widget.
+function todayLocalISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function initHeroDemo() {
+  const demoFrame = document.getElementById("demoFrame");
+  try {
+    const manifestRes = await fetch("puzzles/manifest.json");
+    if (!manifestRes.ok) throw new Error("manifest fetch failed");
+    const manifest = await manifestRes.json();
+
+    const today = todayLocalISO();
+    const releasedDates = manifest.dates.filter(d => d <= today).sort();
+    if (releasedDates.length === 0) throw new Error("no released puzzles");
+    const date = releasedDates[releasedDates.length - 1];
+
+    const sizeInfo = manifest.sizes[0]; // smallest/easiest size for a quick first taste
+    const xmlRes = await fetch(`puzzles/${date}/${sizeInfo.file}`);
+    if (!xmlRes.ok) throw new Error("puzzle fetch failed");
+    const xmlText = await xmlRes.text();
+    const puzzle = parsePazujuXML(xmlText, `demo:${date}:${sizeInfo.key}`);
+
+    const demoGame = new PazujuGame({
+      boardEl: document.getElementById("board"),
+      trayEl: document.getElementById("tray"),
+      statusEl: document.getElementById("status"),
+      numberPadEl: document.getElementById("numberPad"),
+      boardMaxPx: 260,
+    });
+    demoGame.loadPuzzle(puzzle);
+  } catch (err) {
+    console.error(err);
+    demoFrame.innerHTML = `
+      <p class="demo-fallback">
+        Live preview isn&rsquo;t available right now &mdash;
+        <a href="play.html">jump straight into today&rsquo;s puzzles</a> instead.
+      </p>`;
+  }
+}
+
+initHeroDemo();
+</script>
 </body>
 </html>

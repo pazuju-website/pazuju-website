@@ -35,12 +35,22 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - **Difficulty taxonomy**: difficulty is a property of the individual puzzle (how many solving rules it takes), not of the board size — every size can land at any tier on a given day. Computed client-side in `play.html`'s `difficultyCategory()` from the XML's `<difficultyLevel>`: 1.0–1.9 Beginner, 2.0–2.9 Intermediate, 3.0–5.9 Advanced, 6.0+ Expert (no Expert puzzles exist in the generator batch delivered so far). Never display the raw numeric value in the UI, only the tier name.
 - **Creature branding**: 6×6 = Grasshopper, 8×8 = Snake, 10×10 = Dragon. Plaque images at `images/plaque-grasshopper.jpg`, `images/plaque-snake.jpg`, `images/plaque-dragon.jpg` (cropped from a single user-supplied composite, downscaled + re-encoded as JPEG for size). Referenced via `creature`/`icon` fields on each entry in `manifest.json`'s `sizes` array.
 - **`xml/`** (repo root, gitignored): a large raw batch dropped in by the external generator — puzzles organized as `xml/Size {6,8,10}/{difficultyLevel}/PuzzleN.xml`, ~300 puzzles per size (200 Beginner, 60 Intermediate, 40 Advanced). This is the source pool `puzzles/` folders get drawn from; not needed by the live site itself.
+- **Piece-placement conflict detection**: each puzzle XML's `<tile>` list encodes the full solved layout (every tile has a `<number>`, given or not) - `pazuju-xml-loader.js` parses this into `solutionGrid` (used by "check numbers") and gives every tray piece a `solved` snapshot (its true pre-scramble origin/cells/givens, used by "skip assembly"). The engine (`pazuju-engine.js`) separately detects when a piece's own printed given lands on a board square that already has a *different* printed given (`givenCollisions`, e.g. placing a straight piece in the wrong rotation) - this is distinct from ordinary row/col/piece duplicate-value conflicts and previously went completely undetected. `readyForNumbers` (gates the number pad, the remove-piece buttons, and cell selection) is now `allPiecesPlaced && no given-conflicts`, so a misassembled board blocks moving to the number-filling stage but still lets you pull pieces back off the board to fix it.
+- **Board border-alignment fix**: `#board` needs `box-sizing: content-box` (overriding the site's global `border-box`) so the engine's `size*cell`-px sizing is the cell grid's actual content area, not shrunk by the 3px border - otherwise the grid overflowed past the border on the right/bottom.
+- **Check numbers / skip assembly** (`play.html` toolbar, `Online Game/js/ads.js`): "Check numbers" grades the player's entered numbers against `solutionGrid` and animates wrong ones falling off the board (`.chip-fall` in `site.css`) rather than just deleting them; free uses per puzzle are 1 (Grasshopper), 2 (Snake), 3 (Dragon), tracked per day+size in `localStorage`. Once free checks run out: Snake and Dragon offer one more check per rewarded-ad view; **Grasshopper has no ad option at all** - the button just disables once its 1 free check is used. "Skip assembly" auto-places every remaining piece at its true solved position via `game.skipAssembly()`, always ad-gated (no free uses). `ads.js` is a **placeholder** - no real ad account exists yet, so it simulates a rewarded ad with a timed modal (`PazujuAds.watchRewardedAd()` → `Promise<boolean>`). Swapping in a real ad SDK later only touches that one file.
+- **Landing page (`index.html`)**: redesigned around a live, playable mini demo of the engine embedded in the hero (loads today's real 6×6 puzzle at a smaller size via `boardMaxPx` on `PazujuGame`, falls back to a plain text link to `play.html` if the fetch fails), plus three small hand-built CSS/HTML diagrams (not images) illustrating each rule in "How to play." **Important gotcha already hit once**: the demo's board/tray/etc. must use the exact ids `board`/`tray`/`numberPad`/`status` (matching site.css's `#board`/`#tray` ID selectors) - using different ids (e.g. `demoBoard`) silently drops the board's positioning/border/background CSS, since `position:relative` no longer applies and its absolutely-positioned cells fall back to the nearest *other* positioned ancestor. If the demo board ever looks unstyled/misaligned again, check the ids first.
 
 ## Feature status
 
 - [x] Core engine: place pieces, rotate, fill numbers, conflict detection, win celebration
 - [x] Rotate pieces by clicking the shape directly (no separate rotate icon)
 - [x] Tray pieces render smaller than board cells, expand to full size when dragged out
+- [x] Piece-placement conflict detection (given-vs-given collisions block the number-filling stage; pieces stay removable) - see Architecture
+- [x] Board border-alignment fix (see Architecture)
+- [x] Check numbers (1/2/3 free per size, ad-gated beyond that except Grasshopper) with a fall-away animation for wrong entries
+- [x] Skip assembly (always ad-gated)
+- [x] Placeholder rewarded-ad modal (`ads.js`) - no real ad network connected yet, see Open questions
+- [x] Landing page redesign: live interactive puzzle demo in the hero + visual "how to play" diagrams, replacing the old plain static text
 - [x] Multi-day archive (date picker in `play.html`, driven by `manifest.json`) — **45 days registered, 2026-09-17 through 2026-10-31**, drawn from the `xml/` generator pool per the difficulty-mix rule above; needs extending again before November
 - [x] Difficulty taxonomy (Beginner/Intermediate/Advanced/Expert) decoupled from board size, computed from each puzzle's own `difficultyLevel`, shown as a tier name only (no raw number) in `play.html` and the size cards
 - [x] Creature branding (Grasshopper/Snake/Dragon plaque images) on the size cards on both `index.html` and `play.html`
@@ -54,11 +64,22 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 
 - What backend/database to use for the shared data layer (once mobile apps are underway)
 - Whether the manual XML-upload step should eventually be automated
+- **Real ad network**: no Google AdSense/Ad Manager/AdMob account exists yet for pazuju.com. Once one is set up (with real publisher/ad-unit IDs), swap the inside of `PazujuAds.watchRewardedAd()` in `Online Game/js/ads.js` for the real SDK call - nothing else needs to change, callers just await the same `Promise<boolean>`. Also worth a privacy-policy/cookie-consent pass once real ad tracking is live (GDPR/CCPA).
+
+## Where we left off (2026-09-20)
+
+Committed locally (Grasshopper check-numbers fix + full landing-page redesign — live demo + diagrams, `boardMaxPx` option) but **not yet pushed to `origin/main`** — a code review passed (engine syntax-checked, manifest field names and `parsePazujuXML` call verified, CSS variables all resolve) but the browser extension wasn't connected this session, so the visual pass at `http://localhost:8080/index.html` (demo board alignment, diagram animations, mobile breakpoint) is still outstanding before pushing.
+
+Before that, everything through commit `427d45d` (archive through Oct 31 + difficulty/branding, and check-numbers/skip-assembly/conflict-detection/border-fix bundled together) was already pushed — see git log for the exact split.
+
+**Local dev server**: was running via `node serve.js 8080` but gets killed automatically by Claude Code's low-memory background-process reaper during idle periods - just restart it (`node serve.js 8080` in the repo root) when resuming, no code issue.
+
+**Next steps when resuming**: open `http://localhost:8080/index.html`, eyeball the redesign, then push if it looks right.
 
 ## Resuming a session
 
 At the start of a new session, say:
 
-> Read PROJECT_NOTES.md in this project and pick up from the "Feature status" section.
+> Read PROJECT_NOTES.md in this project and pick up from the "Where we left off" section.
 
 That's enough for a fresh session to load full context without re-explaining the project.

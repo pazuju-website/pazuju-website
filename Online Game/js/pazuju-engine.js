@@ -3,13 +3,16 @@
 // produced by pazuju-xml-loader.js and renders/drives a single puzzle instance
 // inside caller-supplied DOM elements.
 class PazujuGame {
-  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange }) {
+  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange, boardMaxPx }) {
     this.boardEl = boardEl;
     this.trayEl = trayEl;
     this.statusEl = statusEl;
     this.numberPadEl = numberPadEl;
     this.onSolved = onSolved;
     this.onStateChange = onStateChange;
+    // Lets a smaller embed (e.g. the homepage teaser) render a more compact
+    // board than the full play page without touching the sizing logic itself.
+    this.boardMaxPx = boardMaxPx || 520;
     this.dragging = null;
     this.selectedCell = null;
     this.highlightValue = null;
@@ -63,8 +66,8 @@ class PazujuGame {
   }
 
   _computeCellSize(size) {
-    const targetBoardPx = 520;
-    return Math.max(28, Math.min(60, Math.floor(targetBoardPx / size)));
+    const targetBoardPx = this.boardMaxPx;
+    return Math.max(20, Math.min(60, Math.floor(targetBoardPx / size)));
   }
 
   _buildPalette(count) {
