@@ -25,7 +25,7 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - Static site, no backend/database. `serve.js` is a zero-dependency static file server for local testing (`node serve.js [port]`, then open `http://localhost:8080/index.html`).
 - **Version control**: git repo initialized locally and pushed to GitHub at `https://github.com/pazuju-website/pazuju-website` (branch `main`). Git was freshly installed via winget on this machine. Push auth is handled by Git Credential Manager (already authorized), so pushes work without further prompts.
 - **Hosting**: deploying via GitHub Pages (Settings → Pages, source = `main` branch / root). `CNAME` file in repo root maps the custom domain.
-- **Domain**: `pazuju.com`, registered through Netfirms (domain-only, no Netfirms hosting plan). DNS is pointed at GitHub Pages: 4 A records on `@` to GitHub's Pages IPs (185.199.108/109/110/111.153) and a CNAME on `www` to `pazuju-website.github.io.`. `http://pazuju.com` is confirmed live. **DNS cleanup 2026-09-20**: found and removed 3 stray legacy records left over from Netfirms' old parking setup that were breaking HTTPS — a root `A @` and wildcard `A *` both pointing at an unrelated Google Cloud IP (`146.148.78.159`, dated 2016), plus a duplicate/conflicting `www` CNAME. **HTTPS fixed 2026-09-20**: after the DNS cleanup, GitHub's "DNS Check" on the custom-domain field in Settings → Pages was stuck on a stale failed state from before the cleanup; re-clicking "Save" on that field (with the domain unchanged) forced GitHub to redo the check, which passed, and it then auto-provisioned a real Let's Encrypt cert for `pazuju.com` (confirmed via `openssl s_client` — was serving the wrong generic `*.github.io` cert before, causing browsers to refuse the connection). "Enforce HTTPS" in Pages settings is now available to check (was previously greyed out) but has **not** been enabled yet — do that next.
+- **Domain**: `pazuju.com`, registered through Netfirms (domain-only, no Netfirms hosting plan). DNS is pointed at GitHub Pages: 4 A records on `@` to GitHub's Pages IPs (185.199.108/109/110/111.153) and a CNAME on `www` to `pazuju-website.github.io.`. `http://pazuju.com` is confirmed live. **DNS cleanup 2026-09-20**: found and removed 3 stray legacy records left over from Netfirms' old parking setup that were breaking HTTPS — a root `A @` and wildcard `A *` both pointing at an unrelated Google Cloud IP (`146.148.78.159`, dated 2016), plus a duplicate/conflicting `www` CNAME. **HTTPS fixed 2026-09-20**: after the DNS cleanup, GitHub's "DNS Check" on the custom-domain field in Settings → Pages was stuck on a stale failed state from before the cleanup; re-clicking "Save" on that field (with the domain unchanged) forced GitHub to redo the check, which passed, and it then auto-provisioned a real Let's Encrypt cert for `pazuju.com` (confirmed via `openssl s_client` — was serving the wrong generic `*.github.io` cert before, causing browsers to refuse the connection). "Enforce HTTPS" in Pages settings has since been **checked and confirmed enabled** — `http://pazuju.com` now 301-redirects to `https://`. HTTPS is fully done.
 - `index.html` — marketing/landing page with rules.
 - `play.html` — the actual game page. Fetches `puzzles/manifest.json`, shows a date picker restricted to released dates, loads `puzzles/{date}/{size}.xml` per selection.
 - `Online Game/js/pazuju-xml-loader.js` — parses the puzzle XML into a plain-object shape, including the puzzle's numeric `difficultyLevel`.
@@ -59,7 +59,7 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - [x] Creature branding (Grasshopper/Snake/Dragon plaque images) on the size cards on both `index.html` and `play.html`
 - [x] Books page (`books.html`) linking out to Amazon, extensible to more titles later - see Architecture
 - [x] Git version control set up, pushed to GitHub
-- [x] Live hosting: **pazuju.com is live** via GitHub Pages + Netfirms DNS (as of 2026-09-19), **and HTTPS now works** (as of 2026-09-20, see Architecture) — "Enforce HTTPS" in Pages settings still needs to be checked to force all traffic onto it.
+- [x] Live hosting: **pazuju.com is live** via GitHub Pages + Netfirms DNS (as of 2026-09-19), **HTTPS fixed and enforced** (as of 2026-09-20, see Architecture) — `http://` now redirects to `https://`, fully done.
 - [ ] Shared backend/database so future web + mobile apps read from one source — **not started, not designed yet**
 - [ ] Native Android app
 - [ ] Native iOS app
@@ -68,22 +68,23 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 
 - What backend/database to use for the shared data layer (once mobile apps are underway)
 - Whether the manual XML-upload step should eventually be automated
-- **Real ad network**: no Google AdSense/Ad Manager/AdMob account exists yet for pazuju.com. Once one is set up (with real publisher/ad-unit IDs), swap the inside of `PazujuAds.watchRewardedAd()` in `Online Game/js/ads.js` for the real SDK call - nothing else needs to change, callers just await the same `Promise<boolean>`. Also worth a privacy-policy/cookie-consent pass once real ad tracking is live (GDPR/CCPA).
+- **Real ad network — NEXT UP**: no Google AdSense/Ad Manager/AdMob account exists yet for pazuju.com. This is the first thing to work on next session (see "Where we left off"). Once one is set up (with real publisher/ad-unit IDs), swap the inside of `PazujuAds.watchRewardedAd()` in `Online Game/js/ads.js` for the real SDK call - nothing else needs to change, callers just await the same `Promise<boolean>`. Also worth a privacy-policy/cookie-consent pass once real ad tracking is live (GDPR/CCPA).
 
 ## Where we left off (2026-09-20)
 
-A lot landed this session, all **verified working in a real browser** (extension was connected for this session) but **not yet committed**:
-1. Landing-page demo reworked from live/interactive to a static preview (see Architecture) - fixes reported layout/overlap/interactivity issues.
-2. Books page (`books.html`) added with nav links, cover image wired up.
-3. `PROJECT_NOTES.md` updates for both.
+Everything is done, committed, pushed, and **verified live on pazuju.com** — nothing pending in git (working tree clean, `origin/main` at `e0f2fc0`), no open decisions waiting on the user. This was a full wrap-up session; the user signed off for the evening.
 
-Also done this session, outside git entirely: **HTTPS on pazuju.com is now fixed** (see Architecture) — cert confirmed issued and serving correctly via `openssl s_client`. "Enforce HTTPS" in Pages settings is available now but not yet turned on; ask before doing that (it's a settings change, not a code change).
-
-Before that, `427d45d` (archive through Oct 31 + difficulty/branding, check-numbers/skip-assembly/conflict-detection/border-fix) and `b070466` (landing-page redesign v1 + Grasshopper check-numbers fix) are the last two pushed/local commits — see git log for the exact split. `b070466` was committed locally but never pushed.
+What shipped this session:
+1. Landing-page demo reworked from live/interactive to a static preview (see Architecture) - fixed the reported layout/overlap/interactivity issues.
+2. Books page (`books.html`) added with nav links on every page, cover image wired up.
+3. **HTTPS fully fixed**: stale GitHub DNS check re-triggered, cert issued, and "Enforce HTTPS" enabled - confirmed via `curl` that `http://pazuju.com` now redirects to `https://` and serves a valid cert.
+4. Verified the live site directly: homepage, `/books.html`, the book cover image, and the demo puzzle XML all confirmed reachable over HTTPS with correct content.
 
 **Local dev server**: was running via `node serve.js 8080` but gets killed automatically by Claude Code's low-memory background-process reaper during idle periods - just restart it (`node serve.js 8080` in the repo root) when resuming, no code issue.
 
-**Next steps when resuming**: confirm whether to commit + push everything (nothing since `b070466` is on GitHub yet), and whether to enable "Enforce HTTPS".
+### Next session: start with Google Ads setup
+
+The user's explicit instruction: **the first thing to do when picking this back up is getting Google Ads set up** (AdSense/Ad Manager/AdMob - whichever fits a rewarded-ad-on-a-puzzle-site use case; needs a decision on which product, since none of the three has been chosen yet). See the "Real ad network" item under Open questions for what it plugs into (`Online Game/js/ads.js`'s `PazujuAds.watchRewardedAd()` is the one place the real SDK call goes - everything else in the codebase already awaits that same function and needs no changes). This is a **user-driven account-setup task** (creating a Google account/site verification, getting approved, generating publisher/ad-unit IDs) more than a coding task - expect to need the user's input/actions for most of it rather than being able to do it autonomously.
 
 ## Resuming a session
 
