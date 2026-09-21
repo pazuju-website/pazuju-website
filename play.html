@@ -144,6 +144,27 @@ function getRemainingFreeChecks(date, sizeKey) {
   return Math.max(0, total - getChecksUsed(date, sizeKey));
 }
 
+// Cross-fades the tray out and the number pad in once assembly finishes, so
+// the "pieces to place" panel doesn't keep taking up screen space once it's
+// empty - only #tray needs this helper since the engine already flips
+// numberPad's display itself (see _renderNumberPad in pazuju-engine.js);
+// here we just hold its opacity at 0 until the tray's fade-out finishes.
+let wasReadyForNumbers = false;
+const TRAY_FADE_MS = 400;
+
+function fadeOutTray() {
+  clearTimeout(trayEl._fadeTimeout);
+  trayEl.style.opacity = "0";
+  trayEl._fadeTimeout = setTimeout(() => { trayEl.style.display = "none"; }, TRAY_FADE_MS);
+}
+
+function fadeInTray() {
+  clearTimeout(trayEl._fadeTimeout);
+  trayEl.style.display = "";
+  void trayEl.offsetWidth; // force reflow so the opacity transition below actually runs
+  trayEl.style.opacity = "1";
+}
+
 // Keeps the toolbar in sync with the game's current phase - called by the
 // engine itself after every render (see onStateChange below).
 function updateToolbar(state) {
@@ -154,6 +175,18 @@ function updateToolbar(state) {
   gameToolbar.style.display = "flex";
   skipAssemblyBtn.style.display = state.readyForNumbers ? "none" : "";
   checkNumbersBtn.style.display = state.readyForNumbers ? "" : "none";
+
+  if (state.readyForNumbers !== wasReadyForNumbers) {
+    wasReadyForNumbers = state.readyForNumbers;
+    if (state.readyForNumbers) {
+      numberPadEl.style.opacity = "0"; // engine just made it visible instantly - hold it hidden until the tray finishes fading
+      fadeOutTray();
+      setTimeout(() => { numberPadEl.style.opacity = "1"; }, TRAY_FADE_MS);
+    } else {
+      numberPadEl.style.opacity = "0";
+      fadeInTray();
+    }
+  }
 
   const remaining = getRemainingFreeChecks(currentPuzzleDate, selectedSizeKey);
   const allowsAd = sizeAllowsAdCheck(selectedSizeKey);
@@ -371,6 +404,9 @@ function selectSize(sizeKey, cardEl) {
   const sizeInfo = manifest.sizes.find(s => s.key === sizeKey);
   puzzleMeta.textContent = `${sizeInfo.creature} ${sizeInfo.label} · ${difficultyCategory(puzzle.difficulty)} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
   sharePanel.classList.remove("visible");
+  wasReadyForNumbers = false;
+  fadeInTray();
+  numberPadEl.style.opacity = "0";
   game.loadPuzzle(puzzle);
   startTimer();
   gameArea.classList.add("active");

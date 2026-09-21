@@ -656,6 +656,7 @@ section.block h2 {
   gap: 18px;
   align-items: center;
   box-shadow: 0 4px 14px rgba(67,31,17,0.35);
+  transition: opacity 0.4s ease;
 }
 
 #tray h3 { margin: 0; font-size: 14px; color: var(--wood-dark-2); align-self: flex-start; }
@@ -679,6 +680,7 @@ section.block h2 {
   border: 3px solid var(--wood-dark-1);
   border-radius: 10px;
   box-shadow: 0 4px 14px rgba(67,31,17,0.35);
+  transition: opacity 0.4s ease;
 }
 
 .pad-chip {
