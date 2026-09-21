@@ -81,7 +81,11 @@ Session focus was Google Ads setup, but it pivoted to analytics after investigat
 
 **User's call**: before spending more effort on ad-network setup, the real first priority is **getting traffic to the site**, and before that, **knowing what traffic exists at all** - the site currently has no analytics whatsoever.
 
-**Ad gates switched off in the meantime**: since there's no ad network and no traffic yet, the user asked to stop requiring a rewarded ad for "skip assembly" (now unconditionally free) and to stop offering an ad to unlock extra "check numbers" uses beyond the free per-size allowance. Implemented via a single `ADS_ENABLED = false` flag in `play.html` rather than deleting the ad-gating code - see Architecture's "Check numbers / skip assembly" entry for exactly what that flag controls. Verified locally in the browser: skip assembly now completes instantly with no ad modal, and the check-numbers badge no longer offers "Ad" once free checks run out. This is committed.
+**Ad gates switched off in the meantime**: since there's no ad network and no traffic yet, the user asked to stop requiring a rewarded ad for "skip assembly" (now unconditionally free) and to stop offering an ad to unlock extra "check numbers" uses beyond the free per-size allowance. Implemented via a single `ADS_ENABLED = false` flag in `play.html` rather than deleting the ad-gating code - see Architecture's "Check numbers / skip assembly" entry for exactly what that flag controls.
+
+**Two more gameplay changes requested and shipped the same session**: a per-puzzle timer and a share-result panel (native share / X / Facebook / WhatsApp, `?date=` deep link - see Architecture's "Puzzle timer + share result" entry), and locking correct numbers to the given/starter color once "check numbers" confirms them (see the updated "Check numbers / skip assembly" entry). All three changes were verified locally in the browser before pushing.
+
+**Pushed live 2026-09-21**: all three commits (`dd3807f` ad gates off, `8bf5121` timer + share, `a950c71` locked numbers) are pushed to `origin/main` (now at `a950c71`) - GitHub Pages will redeploy pazuju.com with these within a minute or two of the push. Not yet re-verified on the live domain after deployment.
 
 ### Next session: set up Google Analytics (GA4)
 
