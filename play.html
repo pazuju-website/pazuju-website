@@ -40,6 +40,7 @@
 
   <section class="game-area" id="gameArea">
     <div class="puzzle-meta" id="puzzleMeta"></div>
+    <div class="puzzle-timer" id="puzzleTimer">⏱ 00:00</div>
     <div class="game-layout">
       <div id="board"></div>
       <div id="tray"><h3>Pieces to place</h3></div>
@@ -50,6 +51,15 @@
     </div>
     <div id="numberPad" class="number-pad"></div>
     <div class="status" id="status"></div>
+    <div class="share-panel" id="sharePanel">
+      <p class="share-summary" id="shareSummary"></p>
+      <div class="share-actions">
+        <button type="button" class="btn toolbar-btn" id="shareBtn">📤 Share result</button>
+        <a class="btn secondary toolbar-btn" id="shareTwitter" href="#" target="_blank" rel="noopener">Share on X</a>
+        <a class="btn secondary toolbar-btn" id="shareFacebook" href="#" target="_blank" rel="noopener">Share on Facebook</a>
+        <a class="btn secondary toolbar-btn" id="shareWhatsapp" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -75,12 +85,20 @@ const boardEl = document.getElementById("board");
 const trayEl = document.getElementById("tray");
 const statusEl = document.getElementById("status");
 const numberPadEl = document.getElementById("numberPad");
+const puzzleTimerEl = document.getElementById("puzzleTimer");
 
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
 const skipAssemblyAdTag = document.getElementById("skipAssemblyAdTag");
 const checkNumbersBtn = document.getElementById("checkNumbersBtn");
 const checkBadge = document.getElementById("checkBadge");
+
+const sharePanel = document.getElementById("sharePanel");
+const shareSummaryEl = document.getElementById("shareSummary");
+const shareBtn = document.getElementById("shareBtn");
+const shareTwitter = document.getElementById("shareTwitter");
+const shareFacebook = document.getElementById("shareFacebook");
+const shareWhatsapp = document.getElementById("shareWhatsapp");
 
 // No real ad network is hooked up yet (see PROJECT_NOTES.md) and there's no
 // traffic to justify setting one up before analytics is in place. Ad-gated
@@ -179,7 +197,86 @@ checkNumbersBtn.addEventListener("click", async () => {
   if (rewarded) game.checkNumbers();
 });
 
-const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: () => launchFireworks(), onStateChange: updateToolbar });
+// Puzzle timer - starts the moment a puzzle is opened (see selectSize) and
+// runs continuously through assembly + number-filling until solved.
+let timerInterval = null;
+let timerStartMs = null;
+let finalElapsedMs = null;
+
+function formatElapsed(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerStartMs = Date.now();
+  finalElapsedMs = null;
+  puzzleTimerEl.textContent = "⏱ 00:00";
+  timerInterval = setInterval(() => {
+    puzzleTimerEl.textContent = "⏱ " + formatElapsed(Date.now() - timerStartMs);
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  if (timerStartMs !== null && finalElapsedMs === null) {
+    finalElapsedMs = Date.now() - timerStartMs;
+    puzzleTimerEl.textContent = "⏱ " + formatElapsed(finalElapsedMs);
+  }
+}
+
+// Builds the shareable result summary - puzzle identity + time only, no
+// solution/spoiler content. url carries ?date= so a friend opening the link
+// lands straight on the same day's puzzles (see init()'s query handling).
+function buildShareText() {
+  const sizeInfo = manifest.sizes.find(s => s.key === selectedSizeKey);
+  const puzzle = sizePuzzles[selectedSizeKey];
+  const timeStr = formatElapsed(finalElapsedMs ?? 0);
+  const dateLabel = currentPuzzleDate === todayLocalISO() ? "today's" : formatDateLong(currentPuzzleDate);
+  const url = `${location.origin}${location.pathname}?date=${currentPuzzleDate}`;
+  const text = `Pazuju - solved ${dateLabel} ${sizeInfo.creature} ${sizeInfo.label} (${difficultyCategory(puzzle.difficulty)}) in ${timeStr}! 🎉`;
+  return { text, url };
+}
+
+function showShareResult() {
+  const { text, url } = buildShareText();
+  shareSummaryEl.textContent = text;
+  shareTwitter.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  shareFacebook.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  shareWhatsapp.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
+  sharePanel.classList.add("visible");
+}
+
+// Prefers the native share sheet (covers social apps and direct-to-friend
+// messaging in one) and falls back to copying the result text for browsers
+// without Web Share support (most desktop browsers).
+shareBtn.addEventListener("click", async () => {
+  const { text, url } = buildShareText();
+  if (navigator.share) {
+    try { await navigator.share({ title: "Pazuju", text, url }); } catch { /* user cancelled - not an error */ }
+    return;
+  }
+  const original = shareBtn.textContent;
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    shareBtn.textContent = "Copied!";
+  } catch {
+    shareBtn.textContent = "Copy failed - select text above";
+  }
+  setTimeout(() => { shareBtn.textContent = original; }, 1800);
+});
+
+function handleSolved() {
+  stopTimer();
+  launchFireworks();
+  showShareResult();
+}
+
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: handleSolved, onStateChange: updateToolbar });
 
 function todayLocalISO() {
   const d = new Date();
@@ -236,6 +333,8 @@ async function loadDate(date) {
   sizeSection.style.display = "none";
   selectedSizeKey = null;
   currentPuzzleDate = date;
+  stopTimer();
+  sharePanel.classList.remove("visible");
 
   dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
   dateSub.textContent = "Pick a size to start playing.";
@@ -271,7 +370,9 @@ function selectSize(sizeKey, cardEl) {
   const puzzle = sizePuzzles[sizeKey];
   const sizeInfo = manifest.sizes.find(s => s.key === sizeKey);
   puzzleMeta.textContent = `${sizeInfo.creature} ${sizeInfo.label} · ${difficultyCategory(puzzle.difficulty)} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
+  sharePanel.classList.remove("visible");
   game.loadPuzzle(puzzle);
+  startTimer();
   gameArea.classList.add("active");
   gameArea.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -293,9 +394,14 @@ async function init() {
     return;
   }
 
-  const currentDate = releasedDates[releasedDates.length - 1];
+  // A shared result link carries ?date=YYYY-MM-DD (see buildShareText) so the
+  // friend opening it lands straight on that day's puzzles instead of today's.
+  const requestedDate = new URLSearchParams(location.search).get("date");
+  const currentDate = (requestedDate && releasedDates.includes(requestedDate))
+    ? requestedDate
+    : releasedDates[releasedDates.length - 1];
   archiveDateInput.min = releasedDates[0];
-  archiveDateInput.max = currentDate;
+  archiveDateInput.max = releasedDates[releasedDates.length - 1];
   archiveDateInput.value = currentDate;
 
   archiveDateInput.addEventListener("change", () => {
