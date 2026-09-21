@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Books &mdash; Pazuju</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="images/pazuju-logo.png">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="images/pazuju-logo.png" alt="Pazuju"></a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="play.html">Play</a>
+    <a href="books.html">Books</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero" style="padding-top:0;">
+    <h1>Books</h1>
+    <p>Take Pazuju off the screen and onto paper.</p>
+  </section>
+
+  <section class="block">
+    <div class="book-grid" id="bookGrid"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  Pazuju &middot; a daily piece-placement puzzle
+</footer>
+
+<script>
+// One entry today, but listed here so adding the next book later is just
+// another object in this array - nothing else on the page needs to change.
+const BOOKS = [
+  {
+    title: "Pazuju: The Evolution of the Number Game Is Here",
+    author: "Jonathan Tillger",
+    blurb: "The book behind the puzzle - the original print edition of Pazuju, from the creator of the daily online game.",
+    url: "https://www.amazon.ca/Pazuju-evolution-number-game-here/dp/B0HJNNGW33",
+    cover: "images/book-pazuju-cover.avif",
+  },
+];
+
+const bookGrid = document.getElementById("bookGrid");
+BOOKS.forEach(book => {
+  const card = document.createElement("div");
+  card.className = "book-card";
+  card.innerHTML = `
+    ${book.cover ? `<img class="book-cover" src="${book.cover}" alt="${book.title} cover">` : ""}
+    <div class="book-card-body">
+      <h3>${book.title}</h3>
+      <div class="book-author">by ${book.author}</div>
+      <p>${book.blurb}</p>
+      <a class="btn" href="${book.url}" target="_blank" rel="noopener">Buy on Amazon</a>
+    </div>
+  `;
+  bookGrid.appendChild(card);
+});
+</script>
+</body>
+</html>

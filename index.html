@@ -17,6 +17,7 @@
   <nav>
     <a href="index.html">Home</a>
     <a href="play.html">Play</a>
+    <a href="books.html">Books</a>
   </nav>
 </header>
 
@@ -37,13 +38,11 @@
 
     <div class="hero-demo">
       <div class="demo-frame" id="demoFrame">
-        <div class="demo-badge">Try it right here</div>
+        <div class="demo-badge">A peek at the pieces</div>
         <div class="demo-play-area">
           <div id="board"></div>
           <div id="tray"><h3>Pieces to place</h3></div>
         </div>
-        <div id="numberPad" class="number-pad demo-number-pad"></div>
-        <div class="status demo-status" id="status"></div>
       </div>
     </div>
   </section>
@@ -126,49 +125,34 @@
 <script src="Online Game/js/pazuju-xml-loader.js"></script>
 <script src="Online Game/js/pazuju-engine.js"></script>
 <script>
-// A live, playable taste of today's easiest puzzle, right on the landing
-// page - reuses the real engine (not a mockup), just at a smaller size. If
+// A static snapshot of a puzzle mid-assembly, right on the landing page -
+// reuses the real engine's rendering (not a mockup) so it looks exactly like
+// the game, but non-interactive (see .demo-frame's pointer-events in
+// site.css) and always the same hand-picked Beginner puzzle rather than
+// today's, so it reliably has just 3 tray pieces and never changes shape. If
 // anything about it fails to load, the frame quietly falls back to a plain
 // invite to the full Play page instead of showing a broken widget.
-function todayLocalISO() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 async function initHeroDemo() {
   const demoFrame = document.getElementById("demoFrame");
   try {
-    const manifestRes = await fetch("puzzles/manifest.json");
-    if (!manifestRes.ok) throw new Error("manifest fetch failed");
-    const manifest = await manifestRes.json();
-
-    const today = todayLocalISO();
-    const releasedDates = manifest.dates.filter(d => d <= today).sort();
-    if (releasedDates.length === 0) throw new Error("no released puzzles");
-    const date = releasedDates[releasedDates.length - 1];
-
-    const sizeInfo = manifest.sizes[0]; // smallest/easiest size for a quick first taste
-    const xmlRes = await fetch(`puzzles/${date}/${sizeInfo.file}`);
-    if (!xmlRes.ok) throw new Error("puzzle fetch failed");
+    const xmlRes = await fetch("puzzles/demo-grasshopper.xml");
+    if (!xmlRes.ok) throw new Error("demo puzzle fetch failed");
     const xmlText = await xmlRes.text();
-    const puzzle = parsePazujuXML(xmlText, `demo:${date}:${sizeInfo.key}`);
+    const puzzle = parsePazujuXML(xmlText, "landing-demo");
 
     const demoGame = new PazujuGame({
       boardEl: document.getElementById("board"),
       trayEl: document.getElementById("tray"),
-      statusEl: document.getElementById("status"),
-      numberPadEl: document.getElementById("numberPad"),
-      boardMaxPx: 260,
+      statusEl: document.createElement("div"), // detached - demo never reaches a state that updates it
+      numberPadEl: null,
+      boardMaxPx: 240,
     });
     demoGame.loadPuzzle(puzzle);
   } catch (err) {
     console.error(err);
     demoFrame.innerHTML = `
       <p class="demo-fallback">
-        Live preview isn&rsquo;t available right now &mdash;
+        Puzzle preview isn&rsquo;t available right now &mdash;
         <a href="play.html">jump straight into today&rsquo;s puzzles</a> instead.
       </p>`;
   }

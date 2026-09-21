@@ -120,6 +120,7 @@ main {
   flex: 1 1 340px;
   max-width: 420px;
   padding-top: 20px;
+  position: relative;
   animation: heroFadeUp 0.6s ease both;
 }
 
@@ -141,15 +142,21 @@ main {
 
 .hero-demo {
   flex: 1 1 300px;
-  max-width: 340px;
+  max-width: 440px;
   display: flex;
   justify-content: center;
+  position: relative;
   animation: heroFadeUp 0.6s 0.12s ease both;
 }
 
+/* Uses `top` on a `position: relative` element rather than `transform` for
+   the slide-up, because `transform` (even a no-op one held by the animation's
+   `both` fill mode) makes this element a new containing block for any
+   `position: fixed` descendant - which breaks dragging a piece out of the
+   tray here, since the engine positions the dragged piece with `fixed`. */
 @keyframes heroFadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; top: 14px; }
+  to { opacity: 1; top: 0; }
 }
 
 .demo-frame {
@@ -180,26 +187,32 @@ main {
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
+/* Display-only: this preview never advances past the assembly stage, so
+   nothing here should look or act clickable. */
 .demo-play-area {
   display: flex;
   gap: 14px;
   justify-content: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  pointer-events: none;
 }
+
+/* Prevents the board (a fixed size*cell px box set inline by the engine)
+   from being squeezed narrower by the flex row when space is tight - which
+   previously left its absolutely-positioned cells overflowing past its own
+   shrunk border instead of lining up with it. */
+.demo-play-area #board { flex-shrink: 0; }
 
 .demo-play-area #tray {
   width: auto;
-  min-width: 140px;
-  min-height: 130px;
+  min-width: 110px;
+  flex-shrink: 0;
   gap: 10px;
   padding: 10px;
 }
 
 .demo-play-area #tray h3 { font-size: 12px; }
-
-.demo-number-pad { margin: 16px auto 0; padding: 14px 10px 4px; }
-.demo-number-pad .pad-chip { width: 36px; height: 36px; font-size: 15px; }
-.demo-status { font-size: 12px; margin-top: 10px; }
 
 .demo-fallback {
   margin: 0;
@@ -215,6 +228,9 @@ main {
   .hero.hero-split { text-align: center; }
   .hero-copy h1, .hero-copy p { text-align: center; }
   .hero-actions { justify-content: center; }
+  /* Not enough width for board + tray side by side once the demo shrinks to
+     fit a narrow screen - fall back to the original stacked layout. */
+  .demo-play-area { flex-wrap: wrap; }
 }
 
 .btn {
@@ -459,6 +475,46 @@ section.block h2 {
 }
 
 .size-card.selected .difficulty { color: var(--cream); opacity: 0.9; }
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 18px;
+  max-width: 900px;
+}
+
+.book-card {
+  background: var(--card-bg);
+  border: 2px solid var(--wood-dark-1);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 6px rgba(67,31,17,0.15);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.book-cover {
+  width: 140px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(67,31,17,0.35);
+  align-self: flex-start;
+}
+
+.book-card-body { flex: 1 1 260px; min-width: 0; }
+
+.book-card h3 { margin: 0 0 4px; color: var(--wood-dark-2); }
+
+.book-author {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.book-card p { margin: 0 0 18px; line-height: 1.5; }
 
 .date-bar {
   display: flex;
