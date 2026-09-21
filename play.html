@@ -45,7 +45,7 @@
       <div id="tray"><h3>Pieces to place</h3></div>
     </div>
     <div class="game-toolbar" id="gameToolbar">
-      <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag">Watch ad</span></button>
+      <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag" id="skipAssemblyAdTag">Watch ad</span></button>
       <button type="button" class="btn toolbar-btn" id="checkNumbersBtn">✓ Check numbers <span class="check-badge" id="checkBadge"></span></button>
     </div>
     <div id="numberPad" class="number-pad"></div>
@@ -78,8 +78,17 @@ const numberPadEl = document.getElementById("numberPad");
 
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
+const skipAssemblyAdTag = document.getElementById("skipAssemblyAdTag");
 const checkNumbersBtn = document.getElementById("checkNumbersBtn");
 const checkBadge = document.getElementById("checkBadge");
+
+// No real ad network is hooked up yet (see PROJECT_NOTES.md) and there's no
+// traffic to justify setting one up before analytics is in place. Ad-gated
+// bonus unlocks are disabled for now - skip assembly is free, and check
+// numbers caps out at the free allowance below with no ad option. Flip this
+// back to true once a real ad SDK is wired into ads.js.
+const ADS_ENABLED = false;
+if (!ADS_ENABLED) skipAssemblyAdTag.style.display = "none";
 
 // How many "check numbers" uses each board size gets for free per puzzle
 // (harder/bigger sizes get more, since there's more to double-check).
@@ -87,6 +96,10 @@ const checkBadge = document.getElementById("checkBadge");
 // Grasshopper, which caps out at its one free check with no ad option at all.
 const SIZE_FREE_CHECKS = { "6x6": 1, "8x8": 2, "10x10": 3 };
 const SIZE_ALLOWS_AD_CHECK = { "6x6": false, "8x8": true, "10x10": true };
+
+function sizeAllowsAdCheck(sizeKey) {
+  return ADS_ENABLED && (SIZE_ALLOWS_AD_CHECK[sizeKey] ?? true);
+}
 
 function checksStorageKey(date, sizeKey) {
   return `pazuju-checks-${date}-${sizeKey}`;
@@ -125,7 +138,7 @@ function updateToolbar(state) {
   checkNumbersBtn.style.display = state.readyForNumbers ? "" : "none";
 
   const remaining = getRemainingFreeChecks(currentPuzzleDate, selectedSizeKey);
-  const allowsAd = SIZE_ALLOWS_AD_CHECK[selectedSizeKey] ?? true;
+  const allowsAd = sizeAllowsAdCheck(selectedSizeKey);
   checkNumbersBtn.disabled = !state.hasUserValues || (remaining === 0 && !allowsAd);
 
   if (remaining > 0) {
@@ -141,6 +154,10 @@ function updateToolbar(state) {
 }
 
 skipAssemblyBtn.addEventListener("click", async () => {
+  if (!ADS_ENABLED) {
+    game.skipAssembly();
+    return;
+  }
   skipAssemblyBtn.disabled = true;
   const rewarded = await PazujuAds.watchRewardedAd();
   skipAssemblyBtn.disabled = false;
@@ -155,7 +172,7 @@ checkNumbersBtn.addEventListener("click", async () => {
     updateToolbar({ readyForNumbers: true, hasUserValues: true });
     return;
   }
-  if (!(SIZE_ALLOWS_AD_CHECK[selectedSizeKey] ?? true)) return; // button is disabled in this state, but guard anyway
+  if (!sizeAllowsAdCheck(selectedSizeKey)) return; // button is disabled in this state, but guard anyway
   checkNumbersBtn.disabled = true;
   const rewarded = await PazujuAds.watchRewardedAd();
   checkNumbersBtn.disabled = false;
