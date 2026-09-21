@@ -51,6 +51,10 @@ class PazujuGame {
       solved: { origin: { ...p.solved.origin }, cells: p.solved.cells.map(c => [...c]), givens: { ...p.solved.givens } },
     }));
     this.userValues = {};
+    // Keys ("r,c") of user-filled cells confirmed correct by a past
+    // "check numbers" - rendered and treated like given/starter cells from
+    // then on (locked, not re-editable). See checkNumbers().
+    this.lockedCells = new Set();
     this.selectedCell = null;
     this.highlightValue = null;
     this._hasCelebrated = false;
@@ -137,6 +141,7 @@ class PazujuGame {
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const p = cover[r][c];
+        const key = r + "," + c;
         let val = this.boardGivens[r][c];
         let given = val !== null;
         if (p) {
@@ -147,7 +152,10 @@ class PazujuGame {
             val = pieceGiven;
             given = true;
           } else if (val === null) {
-            val = this.userValues[r + "," + c] ?? null;
+            val = this.userValues[key] ?? null;
+            // A value confirmed correct by "check numbers" is locked in -
+            // render/treat it like a given from now on (see checkNumbers()).
+            if (val !== null && this.lockedCells.has(key)) given = true;
           }
         }
         grid[r][c] = val;
@@ -349,17 +357,23 @@ class PazujuGame {
 
   // Compares every player-entered number against the puzzle's solution and
   // animates the wrong ones off the board instead of just deleting them.
-  // Only ever touches userValues - givens are guaranteed conflict-free by the
-  // time readyForNumbers is true (see _renderBoard), so there's nothing of
-  // the puzzle's own clues for this to second-guess.
+  // Correct ones get locked in (see lockedCells) so they read and behave
+  // like given/starter cells from then on. Only ever touches userValues -
+  // givens are guaranteed conflict-free by the time readyForNumbers is true
+  // (see _renderBoard), so there's nothing of the puzzle's own clues for
+  // this to second-guess.
   checkNumbers() {
     if (!this._readyForNumbers || this._animating) return { checked: 0, wrong: 0 };
     const wrong = [];
     Object.keys(this.userValues).forEach(key => {
       const [r, c] = key.split(",").map(Number);
       if (this.userValues[key] !== this.solutionGrid[r][c]) wrong.push({ r, c, key });
+      else this.lockedCells.add(key);
     });
     const checked = Object.keys(this.userValues).length;
+    // Re-render right away so newly-locked cells switch to the given look
+    // immediately, even before any wrong ones finish falling away.
+    this._renderAll();
     if (wrong.length === 0) return { checked, wrong: 0 };
 
     this._animating = true;
