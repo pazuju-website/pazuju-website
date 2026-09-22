@@ -43,7 +43,15 @@
     <div class="puzzle-timer" id="puzzleTimer">⏱ 00:00</div>
     <div class="game-layout">
       <div id="board"></div>
-      <div id="tray"><h3>Pieces to place</h3></div>
+      <div id="tray">
+        <div class="tray-header">
+          <h3>Pieces to place</h3>
+          <div class="tray-cycle-btns">
+            <button type="button" class="tray-cycle-btn" id="trayUpBtn" aria-label="Cycle pieces up" title="Cycle pieces up">▲</button>
+            <button type="button" class="tray-cycle-btn" id="trayDownBtn" aria-label="Cycle pieces down" title="Cycle pieces down">▼</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="game-toolbar" id="gameToolbar">
       <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag" id="skipAssemblyAdTag">Watch ad</span></button>
@@ -86,6 +94,11 @@ const trayEl = document.getElementById("tray");
 const statusEl = document.getElementById("status");
 const numberPadEl = document.getElementById("numberPad");
 const puzzleTimerEl = document.getElementById("puzzleTimer");
+const trayUpBtn = document.getElementById("trayUpBtn");
+const trayDownBtn = document.getElementById("trayDownBtn");
+
+trayUpBtn.addEventListener("click", () => game.cycleTrayUp());
+trayDownBtn.addEventListener("click", () => game.cycleTrayDown());
 
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");

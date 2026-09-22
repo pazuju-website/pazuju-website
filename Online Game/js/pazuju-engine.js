@@ -242,6 +242,11 @@ class PazujuGame {
         }
         const val = grid[r][c];
         const editable = !!p && !givenGrid[r][c];
+        // A piece the player placed themselves (not one of the puzzle's
+        // fixed starting pieces), while still in the assembly stage, can be
+        // dragged back off the board or tapped to rotate in place - see
+        // _startBoardDrag/_rotatePlacedPiece.
+        const movable = p && !this.fixedPieceIds.has(p.id) && !readyForNumbers;
         if (givenGrid[r][c]) div.classList.add("given");
         if (conflicts.has(r + "," + c)) div.classList.add("conflict");
         if (this.selectedCell && this.selectedCell.r === r && this.selectedCell.c === c) div.classList.add("selected");
@@ -252,7 +257,17 @@ class PazujuGame {
           chip.textContent = val;
           div.appendChild(chip);
         }
-        if (val !== null || editable) {
+        if (movable) {
+          div.style.cursor = "grab";
+          div.addEventListener("pointerdown", (e) => {
+            if (this._animating) return;
+            // Capture is best-effort - document-level move/up listeners
+            // already track the gesture regardless, so a capture failure
+            // shouldn't leave the drag dead.
+            try { div.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+            this._startBoardDrag(e, p);
+          });
+        } else if (val !== null || editable) {
           if (!p && val !== null) div.style.cursor = "pointer";
           div.addEventListener("click", () => {
             if (this._animating) return;
@@ -264,25 +279,6 @@ class PazujuGame {
         }
         boardEl.appendChild(div);
       }
-    }
-
-    if (!readyForNumbers) {
-      this.placed
-        .filter(p => !this.fixedPieceIds.has(p.id))
-        .forEach(p => {
-          const btn = document.createElement("div");
-          btn.className = "remove-btn";
-          btn.textContent = "×";
-          btn.style.left = (p.origin.c * cell - cell * 0.2) + "px";
-          btn.style.top = (p.origin.r * cell - cell * 0.2) + "px";
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.unplaced.push({ id: p.id, color: p.color, cells: p.cells, givens: p.givens, solved: p.solved });
-            this.placed = this.placed.filter(x => x.id !== p.id);
-            this._renderAll();
-          });
-          boardEl.appendChild(btn);
-        });
     }
 
     this.statusEl.textContent = !allPlaced
@@ -301,6 +297,12 @@ class PazujuGame {
 
   _renderTray() {
     this.trayEl.querySelectorAll(".piece-wrap").forEach(el => el.remove());
+    // Static header controls (see play.html) live in the tray markup outside
+    // the piece-wraps this method manages - just keep their enabled state in
+    // sync with whether there's anything left to cycle through.
+    this.trayEl.querySelectorAll(".tray-cycle-btn").forEach(btn => {
+      btn.disabled = this.unplaced.length < 2;
+    });
     this.unplaced.forEach(p => {
       const wrap = document.createElement("div");
       wrap.className = "piece-wrap";
@@ -308,6 +310,22 @@ class PazujuGame {
       wrap.addEventListener("pointerdown", (e) => this._startDrag(e, p, wrap));
       this.trayEl.appendChild(wrap);
     });
+  }
+
+  // Cycles the tray order so a different piece lands in the reachable top
+  // slot - on a phone, only the first piece or two are easily reachable
+  // without scrolling, and the easiest piece to start with isn't always the
+  // one the generator happened to list first.
+  cycleTrayUp() {
+    if (this.unplaced.length < 2) return;
+    this.unplaced.push(this.unplaced.shift());
+    this._renderTray();
+  }
+
+  cycleTrayDown() {
+    if (this.unplaced.length < 2) return;
+    this.unplaced.unshift(this.unplaced.pop());
+    this._renderTray();
   }
 
   // Fills a piece-wrap element with cell divs for the given piece at the
@@ -435,9 +453,11 @@ class PazujuGame {
     this._renderAll();
   }
 
-  // Staggered number pad below the board: tap a board square to select it
-  // (see the click handler in _renderBoard), then tap the value here to fill
-  // it in. Odd/even position offsets (see .pad-chip CSS) create the stagger.
+  // Number pad below the board: tap a board square to select it (see the
+  // click handler in _renderBoard), then tap the value here to fill it in.
+  // Chip size is derived from boardMaxPx (same viewport-driven cap the board
+  // itself uses) so the whole row fits on a phone screen in one line instead
+  // of wrapping/misaligning at a fixed desktop size.
   _renderNumberPad() {
     if (!this.numberPadEl) return;
     this.numberPadEl.innerHTML = "";
@@ -446,10 +466,17 @@ class PazujuGame {
       return;
     }
     this.numberPadEl.style.display = "";
+    const count = this.valueMax - this.valueMin + 1;
+    const gap = 10;
+    const chipSize = Math.max(24, Math.min(48, Math.floor((this.boardMaxPx - gap * (count - 1)) / count)));
+    this.numberPadEl.style.gap = gap + "px";
     for (let v = this.valueMin; v <= this.valueMax; v++) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "num-chip pad-chip";
+      btn.style.width = chipSize + "px";
+      btn.style.height = chipSize + "px";
+      btn.style.fontSize = Math.round(chipSize * 0.42) + "px";
       if (!this.selectedCell) btn.classList.add("disabled");
       if (this.highlightValue === v) btn.classList.add("active");
       if ((this._valueCounts[v] || 0) >= this.size) btn.classList.add("complete");
@@ -472,8 +499,30 @@ class PazujuGame {
   _startDrag(e, piece, el) {
     e.preventDefault();
     const rect = el.getBoundingClientRect();
-    this.dragging = { piece, el, startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
-    el.setPointerCapture(e.pointerId);
+    this.dragging = { source: "tray", piece, el, startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
+    try { el.setPointerCapture(e.pointerId); } catch { /* best-effort, see _startBoardDrag */ }
+    document.addEventListener("pointermove", this._onDragMove);
+    document.addEventListener("pointerup", this._onDragEnd);
+  }
+
+  // Picks up a piece already on the board (pointer capture is set by the
+  // caller in _renderBoard, on the actual cell that received the pointerdown).
+  // Nothing changes yet - the piece stays put and no floating clone exists
+  // until _onDragMove confirms this is a real drag rather than a tap (see
+  // _onDragEnd's "not moved" branch, which rotates it in place instead).
+  _startBoardDrag(e, piece) {
+    e.preventDefault();
+    const boardRect = this.boardEl.getBoundingClientRect();
+    this.dragging = {
+      source: "board",
+      piece,
+      el: null,
+      startX: e.clientX,
+      startY: e.clientY,
+      origLeft: boardRect.left + piece.origin.c * this.cell,
+      origTop: boardRect.top + piece.origin.r * this.cell,
+      moved: false,
+    };
     document.addEventListener("pointermove", this._onDragMove);
     document.addEventListener("pointerup", this._onDragEnd);
   }
@@ -485,8 +534,18 @@ class PazujuGame {
     if (!this.dragging.moved) {
       if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
       this.dragging.moved = true;
+      if (this.dragging.source === "board") {
+        // Confirmed a real drag, not a tap-to-rotate - pull the piece off
+        // the board now and follow the cursor with a floating clone.
+        this.placed = this.placed.filter(x => x.id !== this.dragging.piece.id);
+        const wrap = document.createElement("div");
+        wrap.className = "piece-wrap";
+        document.body.appendChild(wrap);
+        this.dragging.el = wrap;
+        this._renderAll();
+      }
       const el = this.dragging.el;
-      // Expand the piece to full board-cell size now that it's actually being pulled out of the tray.
+      // Expand/draw the piece at full board-cell size now that it's actually being dragged.
       this._layoutPieceWrap(el, this.dragging.piece, this.cell);
       el.style.position = "fixed";
       el.style.left = this.dragging.origLeft + "px";
@@ -499,32 +558,58 @@ class PazujuGame {
 
   _onDragEnd(e) {
     if (!this.dragging) return;
-    if (!this.dragging.moved) {
-      const piece = this.dragging.piece;
-      piece.givens = this._rotateGivens(piece.givens, piece.cells);
-      piece.cells = this._rotateCells(piece.cells);
-      this._renderTray();
+    const { source, piece, moved } = this.dragging;
+
+    if (!moved) {
+      if (source === "board") {
+        this._rotatePlacedPiece(piece);
+      } else {
+        piece.givens = this._rotateGivens(piece.givens, piece.cells);
+        piece.cells = this._rotateCells(piece.cells);
+        this._renderTray();
+      }
       this._endDrag();
       return;
     }
+
     const boardRect = this.boardEl.getBoundingClientRect();
     const elRect = this.dragging.el.getBoundingClientRect();
     const targetCol = Math.round((elRect.left - boardRect.left) / this.cell);
     const targetRow = Math.round((elRect.top - boardRect.top) / this.cell);
     const cover = this._coverGrid();
-    const cells = this.dragging.piece.cells.map(([r, c]) => [targetRow + r, targetCol + c]);
+    const cells = piece.cells.map(([r, c]) => [targetRow + r, targetCol + c]);
     const fits = cells.every(([r, c]) => r >= 0 && r < this.size && c >= 0 && c < this.size && !cover[r][c]);
 
     if (fits) {
-      const piece = this.dragging.piece;
-      this.unplaced = this.unplaced.filter(p => p.id !== piece.id);
+      if (source === "tray") this.unplaced = this.unplaced.filter(p => p.id !== piece.id);
       this.placed.push({ id: piece.id, color: piece.color, origin: { r: targetRow, c: targetCol }, cells: piece.cells, givens: piece.givens, solved: piece.solved });
-      this._renderAll();
-    } else {
-      // Didn't land on an open spot - drop it back in the tray at tray size.
-      this._renderTray();
+    } else if (source === "board") {
+      // Didn't land on an open spot - send it back to the tray, same as the old remove button used to.
+      this.unplaced.push({ id: piece.id, color: piece.color, cells: piece.cells, givens: piece.givens, solved: piece.solved });
     }
+    // A tray piece that doesn't fit anywhere just stays in `unplaced`, untouched.
+    this.dragging.el.remove();
+    this._renderAll();
     this._endDrag();
+  }
+
+  // Rotates a piece already on the board in place (tap-to-rotate), only if
+  // the rotated shape still fits at its current origin - on the board and
+  // not overlapping another placed piece. Silently no-ops otherwise; the
+  // player can drag it somewhere with more room and try again.
+  _rotatePlacedPiece(piece) {
+    const newCells = this._rotateCells(piece.cells);
+    const cover = this._coverGrid();
+    const fits = newCells.every(([r, c]) => {
+      const rr = piece.origin.r + r, cc = piece.origin.c + c;
+      if (rr < 0 || rr >= this.size || cc < 0 || cc >= this.size) return false;
+      const occupant = cover[rr][cc];
+      return !occupant || occupant.id === piece.id;
+    });
+    if (!fits) return;
+    piece.givens = this._rotateGivens(piece.givens, piece.cells);
+    piece.cells = newCells;
+    this._renderAll();
   }
 
   _endDrag() {
