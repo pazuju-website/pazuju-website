@@ -48,6 +48,7 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - **Tray reorder controls** (`pazuju-engine.js` + `play.html`, added 2026-09-21): with the tray now stacking below a (possibly shrunk) mobile board, only the first piece or two are within easy reach without scrolling - not necessarily the easiest piece to start with. Two small ▲/▼ buttons in the tray header (`.tray-header`, next to "Pieces to place") call `game.cycleTrayUp()`/`cycleTrayDown()`, which cyclically rotate the `unplaced` array order (`push(shift())` / `unshift(pop())`) and re-render just the tray. Buttons disable themselves via `_renderTray()` when fewer than 2 pieces remain.
 - **Placed-piece drag/rotate, remove-button removed** (`pazuju-engine.js`, added 2026-09-21): the old per-piece "×" remove button is gone. A piece the player placed (not one of the puzzle's fixed starting pieces), while still in the assembly stage, is now `movable`: its board cells get a `pointerdown` handler (`_startBoardDrag`) instead of the ordinary click-to-highlight handler. Dragging it (past the same 4px move threshold used for tray pieces) pulls it off the board and follows the cursor as a floating clone (built lazily in `_onDragMove` only once real movement is confirmed, so a plain tap never disturbs board state) - dropping it on an open spot repositions it there via the same fit-check `_onDragEnd` already used for tray-to-board placement, and dropping it anywhere else (or off the board) sends it back to the tray, replacing what the remove button used to do. A tap with no movement instead calls `_rotatePlacedPiece()`, which rotates the piece in place and only commits if the rotated shape still fits at its current origin (in bounds, no overlap with another placed piece) - otherwise it's a silent no-op; there's no "wall kick" repositioning, the player just drags it somewhere roomier first. `_startDrag`/`_startBoardDrag` set `this.dragging.source` ("tray"/"board") so the shared `_onDragMove`/`_onDragEnd` can branch appropriately. `setPointerCapture` calls are wrapped in try/catch (discovered via testing with synthetic pointer events lacking a real active pointer, which throws `NotFoundError`) so a capture failure can't leave a drag dead - the `document`-level move/up listeners track the gesture regardless of capture. Verified via direct `PointerEvent` dispatch in-browser: tap-to-rotate produces the exact expected rotated cell coordinates, drag-to-reposition moves the piece to the dropped cell, and an invalid drop correctly returns the piece to `unplaced` with its `color`/`solved` intact (so "skip assembly" still works for it later).
 - **Responsive board sizing** (`play.html` + `pazuju-engine.js`, added 2026-09-21): the board was always rendered at up to the desktop-sized `boardMaxPx: 520` default regardless of viewport, so on a phone (e.g. ~375px wide) an 8×8/10×10 board (480-520px) overflowed the screen - reported as "not lining up" when testing on mobile for gameplay-video filming. `play.html`'s `computeBoardMaxPx()` now derives the cap from `window.innerWidth - 64` (clamped between 180 and the original 520 ceiling, so desktop is unaffected), passed as `boardMaxPx` when constructing `PazujuGame` and recomputed on `resize`/`orientationchange` (150ms debounced) via a new `game.setBoardMaxPx()` method added to the engine (`pazuju-engine.js` - factored the cell-sizing math out of `loadPuzzle` into `_applyCellSizing()` so both it and `setBoardMaxPx` share it). `setBoardMaxPx` only touches geometry (cell size, board width/height) and re-renders - placed pieces and entered numbers are preserved, no puzzle reload. Verified by overriding `window.innerWidth` and dispatching a synthetic `resize` event in-browser (couldn't get the available browser-automation resize tool to actually shrink the real viewport for an end-to-end visual check) - confirmed an 8×8 board's rendered width dropped from 480px to 304px with all 4 already-placed pieces intact.
+- **Google Analytics (GA4)** (added 2026-09-22): created a new GA4 account+property ("Pazuju"/"Pazuju website", US/USD) under the `jtillger@gmail.com` Google identity, separate from the pre-existing "jonathan@amortgageplan.com" Analytics account used for the unrelated mortgage site. Measurement ID **`G-JVMR4P2DZQ`**, web stream on `https://pazuju.com`. The `gtag.js` snippet is pasted identically right after `<title>` in `index.html`, `play.html`, and `books.html`. Enhanced measurement (scrolls, outbound clicks, etc.) left on with its defaults. Gives visitor count, geography, and session duration; page-level engagement (e.g. which puzzle sizes get played) is available later via GA4's own reports without further code changes.
 
 ## Feature status
 
@@ -75,41 +76,29 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 
 Standing menu of the big open initiatives, so a new session can ask the user which to resume instead of guessing. Keep this list current as items are picked up, finished, or added.
 
-1. **GA4 analytics setup** — active, see "Where we left off" below.
-2. **Set up ads on the site** — real ad network (Ad Manager vs. AdSense), currently on hold; see "Open questions" below.
-3. **Shared backend/database** for future web + mobile apps to read from one source — not started, not designed.
-4. **Native Android app** — not started.
-5. **Native iOS app** — not started.
+1. **Set up ads on the site** — real ad network (Ad Manager vs. AdSense), currently on hold; see "Open questions" below.
+2. **Shared backend/database** for future web + mobile apps to read from one source — not started, not designed.
+3. **Native Android app** — not started.
+4. **Native iOS app** — not started.
+
+(GA4 analytics setup was completed 2026-09-22 — see Architecture and "Where we left off" — and has been removed from this list.)
 
 ## Open questions / not yet decided
 
 - What backend/database to use for the shared data layer (once mobile apps are underway)
 - Whether the manual XML-upload step should eventually be automated
 - **Real ad network — ON HOLD, see below**: investigated 2026-09-21, deprioritized in favor of getting traffic/analytics first. Once resumed: swap the inside of `PazujuAds.watchRewardedAd()` in `Online Game/js/ads.js` for the real SDK call - nothing else needs to change, callers just await the same `Promise<boolean>`. Also worth a privacy-policy/cookie-consent pass once real ad tracking is live (GDPR/CCPA).
-- **No analytics on the site at all** (found 2026-09-21): grepped all HTML for gtag/Google Analytics/GTM - nothing present. GitHub Pages gives no visitor analytics for a custom domain either. So there's currently zero visibility into visitor count, location, or session length. **NEXT UP - see "Where we left off."**
+- ~~No analytics on the site at all~~ **Resolved 2026-09-22** — GA4 is now live, see Architecture's "Google Analytics (GA4)" entry.
 
-## Where we left off (2026-09-21)
+## Where we left off (2026-09-22)
 
-Session focus was Google Ads setup, but it pivoted to analytics after investigation.
+**2026-09-21 recap**: shipped ad gates off (`dd3807f`), per-puzzle timer + share panel (`8bf5121`), and locked-number coloring (`a950c71`) — see prior Architecture entries. Three further UI-polish commits also landed that session but weren't logged here at the time: tray/number-pad cross-fade (`7882dc5`), responsive board sizing (`cb2e4d8`), and responsive number pad + tray reorder + placed-piece drag/rotate (`abe32ed`) — all documented under Architecture now.
 
-**Google Ad Manager investigated and put on hold**: navigated the live Ad Manager signup flow in Chrome. Both "Get started" and "Sign in" on admanager.google.com now route to the same sales-contact questionnaire ("What best describes your business?") - there is no instant self-serve "log in and create a network" path anymore. Google appears to have consolidated the old free/small-publisher tier; a brand-new, low-traffic site like pazuju.com would be going through a sales review with no guaranteed approval/timeline, not an instant signup. AdSense was identified as the alternative with true self-serve signup, but it has no native rewarded-video ad unit (would need a banner/interstitial approach instead) - not decided.
+**2026-09-22 session: GA4 analytics set up and shipped.** Walked the user through Google Analytics in Chrome (browser-automation session): found the user's only existing Analytics account was for an unrelated site (jonathan@amortgageplan.com → jonathantillger.com), so created a new **separate Analytics account "Pazuju"** with a "Pazuju website" GA4 property under the `jtillger@gmail.com` identity. User accepted the Google Analytics Terms of Service themselves (Claude does not accept ToS/consent on the user's behalf). Measurement ID `G-JVMR4P2DZQ`, web stream on `https://pazuju.com`. Added the `gtag.js` snippet to `index.html`, `play.html`, and `books.html` — see Architecture's "Google Analytics (GA4)" entry.
 
-**User's call**: before spending more effort on ad-network setup, the real first priority is **getting traffic to the site**, and before that, **knowing what traffic exists at all** - the site currently has no analytics whatsoever.
+**Not yet done**: commit + push these three file changes, and verify the tag fires on the live site (GA4's realtime report, or the "Test installation" check in GA's own UI) — data collection can take up to 48 hours to first appear in standard reports either way.
 
-**Ad gates switched off in the meantime**: since there's no ad network and no traffic yet, the user asked to stop requiring a rewarded ad for "skip assembly" (now unconditionally free) and to stop offering an ad to unlock extra "check numbers" uses beyond the free per-size allowance. Implemented via a single `ADS_ENABLED = false` flag in `play.html` rather than deleting the ad-gating code - see Architecture's "Check numbers / skip assembly" entry for exactly what that flag controls.
-
-**Two more gameplay changes requested and shipped the same session**: a per-puzzle timer and a share-result panel (native share / X / Facebook / WhatsApp, `?date=` deep link - see Architecture's "Puzzle timer + share result" entry), and locking correct numbers to the given/starter color once "check numbers" confirms them (see the updated "Check numbers / skip assembly" entry). All three changes were verified locally in the browser before pushing.
-
-**Pushed live 2026-09-21**: all three commits (`dd3807f` ad gates off, `8bf5121` timer + share, `a950c71` locked numbers) are pushed to `origin/main` (now at `a950c71`) - GitHub Pages will redeploy pazuju.com with these within a minute or two of the push. Not yet re-verified on the live domain after deployment.
-
-### Next session: set up Google Analytics (GA4)
-
-Plan agreed with the user:
-1. Walk the user through creating a GA4 property in Google Analytics - this **is** genuinely self-serve (unlike Ad Manager), just sign in and create a property to get a measurement ID.
-2. Add the `gtag.js` tracking snippet to `index.html`, `play.html`, and `books.html`.
-3. Commit and push.
-
-This gives visitor count, geography, and session duration (what the user asked for), plus page-level engagement if we want it later (e.g. which puzzle sizes get played). Ad network setup (Ad Manager sales form vs. AdSense trade-off) and traffic-growth work remain open, to revisit after analytics is in place.
+Ad network setup (Ad Manager sales-form vs. AdSense trade-off, see Open questions) and traffic-growth work remain open, to revisit now that analytics is in place.
 
 **Local dev server**: was running via `node serve.js 8080` but gets killed automatically by Claude Code's low-memory background-process reaper during idle periods - just restart it (`node serve.js 8080` in the repo root) when resuming, no code issue.
 
