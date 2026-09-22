@@ -309,7 +309,23 @@ function handleSolved() {
   showShareResult();
 }
 
-const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, onSolved: handleSolved, onStateChange: updateToolbar });
+// Fits the board to the viewport instead of always rendering at the
+// desktop-sized 520px default, which overflowed narrower phone screens.
+// 520 stays the ceiling on wide screens so desktop is unaffected.
+function computeBoardMaxPx() {
+  const available = window.innerWidth - 64; // rough allowance for main's side padding + breathing room
+  return Math.max(180, Math.min(520, available));
+}
+
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, boardMaxPx: computeBoardMaxPx(), onSolved: handleSolved, onStateChange: updateToolbar });
+
+let resizeTimer = null;
+function handleViewportResize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => game.setBoardMaxPx(computeBoardMaxPx()), 150);
+}
+window.addEventListener("resize", handleViewportResize);
+window.addEventListener("orientationchange", handleViewportResize);
 
 function todayLocalISO() {
   const d = new Date();

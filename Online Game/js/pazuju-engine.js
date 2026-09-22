@@ -60,12 +60,25 @@ class PazujuGame {
     this._hasCelebrated = false;
     this._animating = false;
 
+    this._applyCellSizing();
+    this._renderAll();
+  }
+
+  _applyCellSizing() {
     this.cell = this._computeCellSize(this.size);
     this.trayCell = Math.max(16, Math.round(this.cell * 0.62));
     this.boardEl.style.width = (this.size * this.cell) + "px";
     this.boardEl.style.height = (this.size * this.cell) + "px";
     this.boardEl.style.backgroundSize = `${this.cell}px ${this.cell}px`;
+  }
 
+  // Lets the caller re-fit the board to the viewport (e.g. on resize/rotate)
+  // without reloading the puzzle - only geometry changes, all placed pieces
+  // and entered numbers are preserved.
+  setBoardMaxPx(boardMaxPx) {
+    this.boardMaxPx = boardMaxPx;
+    if (!this.size) return;
+    this._applyCellSizing();
     this._renderAll();
   }
 
