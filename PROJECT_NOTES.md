@@ -92,6 +92,8 @@ Standing menu of the big open initiatives, so a new session can ask the user whi
 
 ## Where we left off (2026-09-22)
 
+**Next session should start by checking whether AdSense has approved pazuju.com** (submitted for review 2026-09-22, see below — typically takes a day to a couple of weeks). Check via Chrome at `https://adsense.google.com/adsense/u/0/pub-2616129249983166/sites/my-sites` (or navigate Sites in the AdSense left nav) — look at the "Approval status" column for pazuju.com. If approved, the next steps are: decide the rewarded-video-vs-banner ad design question (see Open questions), create ad units, and place them on the pages. If still pending, just report status back to the user.
+
 **2026-09-21 recap**: shipped ad gates off (`dd3807f`), per-puzzle timer + share panel (`8bf5121`), and locked-number coloring (`a950c71`) — see prior Architecture entries. Three further UI-polish commits also landed that session but weren't logged here at the time: tray/number-pad cross-fade (`7882dc5`), responsive board sizing (`cb2e4d8`), and responsive number pad + tray reorder + placed-piece drag/rotate (`abe32ed`) — all documented under Architecture now.
 
 **2026-09-22 session: GA4 analytics set up and shipped.** Walked the user through Google Analytics in Chrome (browser-automation session): found the user's only existing Analytics account was for an unrelated site (jonathan@amortgageplan.com → jonathantillger.com), so created a new **separate Analytics account "Pazuju"** with a "Pazuju website" GA4 property under the `jtillger@gmail.com` identity. User accepted the Google Analytics Terms of Service themselves (Claude does not accept ToS/consent on the user's behalf). Measurement ID `G-JVMR4P2DZQ`, web stream on `https://pazuju.com`. Added the `gtag.js` snippet to `index.html`, `play.html`, and `books.html` — see Architecture's "Google Analytics (GA4)" entry.
@@ -113,3 +115,5 @@ At the start of a new session, say:
 That's enough for a fresh session to load full context without re-explaining the project.
 
 Every session should also surface the "Next steps" list above (e.g. via AskUserQuestion) so the user can pick which open initiative to resume, rather than assuming "Where we left off" is still the priority.
+
+**As of 2026-09-22, the very first thing the next session should do — before presenting the "Next steps" menu — is check the AdSense approval status for pazuju.com** (see the instruction at the top of "Where we left off"). Report that status to the user up front, since it determines whether the AdSense follow-up work is actionable yet.
