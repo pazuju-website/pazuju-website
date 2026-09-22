@@ -71,6 +71,16 @@ Three sizes published per day: 6×6 (easy), 8×8 (medium), 10×10 (hard).
 - [ ] Native Android app
 - [ ] Native iOS app
 
+## Next steps (present this list at the start of every session)
+
+Standing menu of the big open initiatives, so a new session can ask the user which to resume instead of guessing. Keep this list current as items are picked up, finished, or added.
+
+1. **GA4 analytics setup** — active, see "Where we left off" below.
+2. **Set up ads on the site** — real ad network (Ad Manager vs. AdSense), currently on hold; see "Open questions" below.
+3. **Shared backend/database** for future web + mobile apps to read from one source — not started, not designed.
+4. **Native Android app** — not started.
+5. **Native iOS app** — not started.
+
 ## Open questions / not yet decided
 
 - What backend/database to use for the shared data layer (once mobile apps are underway)
@@ -110,3 +120,5 @@ At the start of a new session, say:
 > Read PROJECT_NOTES.md in this project and pick up from the "Where we left off" section.
 
 That's enough for a fresh session to load full context without re-explaining the project.
+
+Every session should also surface the "Next steps" list above (e.g. via AskUserQuestion) so the user can pick which open initiative to resume, rather than assuming "Where we left off" is still the priority.
