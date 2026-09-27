@@ -63,6 +63,7 @@
       </div>
     </div>
     <div class="game-toolbar" id="gameToolbar">
+      <button type="button" class="btn secondary toolbar-btn" id="undoBtn" title="Undo last move (Ctrl+Z)">↶ Undo</button>
       <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag" id="skipAssemblyAdTag">Watch ad</span></button>
       <button type="button" class="btn toolbar-btn" id="checkNumbersBtn">✓ Check numbers <span class="check-badge" id="checkBadge"></span></button>
     </div>
@@ -111,6 +112,7 @@ trayDownBtn.addEventListener("click", () => game.cycleTrayDown());
 
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
+const undoBtn = document.getElementById("undoBtn");
 const skipAssemblyAdTag = document.getElementById("skipAssemblyAdTag");
 const checkNumbersBtn = document.getElementById("checkNumbersBtn");
 const checkBadge = document.getElementById("checkBadge");
@@ -195,6 +197,7 @@ function updateToolbar(state) {
     return;
   }
   gameToolbar.style.display = "flex";
+  undoBtn.disabled = !state.canUndo;
   skipAssemblyBtn.style.display = state.readyForNumbers ? "none" : "";
   checkNumbersBtn.style.display = state.readyForNumbers ? "" : "none";
 
@@ -225,6 +228,17 @@ function updateToolbar(state) {
     checkNumbersBtn.title = "No more checks available today";
   }
 }
+
+// Steps back one player action at a time (see undo() in pazuju-engine.js);
+// the engine's re-render calls updateToolbar, which re-disables the button
+// once history runs out.
+undoBtn.addEventListener("click", () => game.undo());
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && selectedSizeKey) {
+    e.preventDefault();
+    game.undo();
+  }
+});
 
 skipAssemblyBtn.addEventListener("click", async () => {
   if (!ADS_ENABLED) {

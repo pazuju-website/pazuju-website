@@ -55,6 +55,7 @@ class PazujuGame {
     // "check numbers" - rendered and treated like given/starter cells from
     // then on (locked, not re-editable). See checkNumbers().
     this.lockedCells = new Set();
+    this.history = [];
     this.selectedCell = null;
     this.highlightValue = null;
     this._hasCelebrated = false;
@@ -62,6 +63,47 @@ class PazujuGame {
 
     this._applyCellSizing();
     this._renderAll();
+  }
+
+  // Undo history: each entry is a deep-copied snapshot of the puzzle state
+  // (pieces + entered numbers) from just before one player action. undo()
+  // pops them one at a time, so repeated presses walk back in order.
+  _snapshot() {
+    return JSON.stringify({
+      placed: this.placed,
+      unplaced: this.unplaced,
+      userValues: this.userValues,
+      lockedCells: [...this.lockedCells],
+    });
+  }
+
+  // Records `before` as an undo step, unless the action turned out to be a
+  // no-op (e.g. a rotate that didn't fit, or a piece dropped back on its own
+  // spot) - placed pieces are compared order-insensitively, since re-placing
+  // a piece moves it to the end of `placed` without changing anything visible.
+  _commitHistory(before) {
+    const normalize = (json) => {
+      const st = JSON.parse(json);
+      st.placed.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      return JSON.stringify(st);
+    };
+    if (normalize(before) === normalize(this._snapshot())) return;
+    this.history.push(before);
+  }
+
+  canUndo() {
+    return this.history.length > 0 && !this.dragging && !this._animating && !this._hasCelebrated;
+  }
+
+  undo() {
+    if (!this.canUndo()) return false;
+    const st = JSON.parse(this.history.pop());
+    this.placed = st.placed;
+    this.unplaced = st.unplaced;
+    this.userValues = st.userValues;
+    this.lockedCells = new Set(st.lockedCells);
+    this._renderAll();
+    return true;
   }
 
   _applyCellSizing() {
@@ -380,6 +422,7 @@ class PazujuGame {
     if (typeof this.onStateChange === "function") {
       this.onStateChange({
         readyForNumbers: this._readyForNumbers,
+        canUndo: this.canUndo(),
         allPiecesPlaced: this._allPiecesPlaced,
         hasUserValues: Object.keys(this.userValues).length > 0,
       });
@@ -402,6 +445,10 @@ class PazujuGame {
       else this.lockedCells.add(key);
     });
     const checked = Object.keys(this.userValues).length;
+    // A check is a checkpoint, not an undoable step - undoing past it would
+    // restore the wrong numbers it just revealed and unlock the confirmed
+    // ones, effectively handing out a free check.
+    this.history = [];
     // Re-render right away so newly-locked cells switch to the given look
     // immediately, even before any wrong ones finish falling away.
     this._renderAll();
@@ -445,11 +492,13 @@ class PazujuGame {
   // tray), skipping straight to the number-filling stage.
   skipAssembly() {
     if (this.unplaced.length === 0) return;
+    const before = this._snapshot();
     this.unplaced.forEach(piece => {
       const { origin, cells, givens } = piece.solved;
       this.placed.push({ id: piece.id, color: piece.color, origin: { ...origin }, cells: cells.map(c => [...c]), givens: { ...givens } });
     });
     this.unplaced = [];
+    this._commitHistory(before);
     this._renderAll();
   }
 
@@ -490,8 +539,10 @@ class PazujuGame {
     if (this._animating || !this.selectedCell) return;
     const { r, c } = this.selectedCell;
     const key = r + "," + c;
+    const before = this._snapshot();
     if (this.userValues[key] === value) delete this.userValues[key];
     else this.userValues[key] = value;
+    this._commitHistory(before);
     this.highlightValue = value;
     this._renderAll();
   }
@@ -499,7 +550,7 @@ class PazujuGame {
   _startDrag(e, piece, el) {
     e.preventDefault();
     const rect = el.getBoundingClientRect();
-    this.dragging = { source: "tray", piece, el, startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
+    this.dragging = { source: "tray", piece, el, before: this._snapshot(), startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
     try { el.setPointerCapture(e.pointerId); } catch { /* best-effort, see _startBoardDrag */ }
     document.addEventListener("pointermove", this._onDragMove);
     document.addEventListener("pointerup", this._onDragEnd);
@@ -517,6 +568,7 @@ class PazujuGame {
       source: "board",
       piece,
       el: null,
+      before: this._snapshot(),
       startX: e.clientX,
       startY: e.clientY,
       origLeft: boardRect.left + piece.origin.c * this.cell,
@@ -558,7 +610,7 @@ class PazujuGame {
 
   _onDragEnd(e) {
     if (!this.dragging) return;
-    const { source, piece, moved } = this.dragging;
+    const { source, piece, moved, before } = this.dragging;
 
     if (!moved) {
       if (source === "board") {
@@ -566,9 +618,11 @@ class PazujuGame {
       } else {
         piece.givens = this._rotateGivens(piece.givens, piece.cells);
         piece.cells = this._rotateCells(piece.cells);
-        this._renderTray();
       }
+      this._commitHistory(before);
       this._endDrag();
+      // Full render (not just the tray) so onStateChange reports the new canUndo.
+      this._renderAll();
       return;
     }
 
@@ -589,8 +643,9 @@ class PazujuGame {
     }
     // A tray piece that doesn't fit anywhere just stays in `unplaced`, untouched.
     this.dragging.el.remove();
-    this._renderAll();
+    this._commitHistory(before);
     this._endDrag();
+    this._renderAll();
   }
 
   // Rotates a piece already on the board in place (tap-to-rotate), only if
