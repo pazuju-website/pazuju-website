@@ -41,6 +41,16 @@
     <input type="date" id="archiveDate">
   </div>
 
+  <div class="nickname-bar" id="nicknameBar">
+    <span id="nicknameDisplay">Playing as <strong id="nicknameValue">Anonymous</strong> &middot; <button type="button" id="nicknameEditBtn" class="link-btn">change</button></span>
+    <span id="nicknameEditForm" style="display:none;">
+      <input type="text" id="nicknameInput" maxlength="20" placeholder="Your nickname">
+      <button type="button" id="nicknameSaveBtn" class="btn secondary toolbar-btn">Save</button>
+      <button type="button" id="nicknameCancelBtn" class="link-btn">Cancel</button>
+    </span>
+    <span id="streakBadge" class="streak-badge" style="display:none;">🔥 <span id="streakValue">0</span>-day streak</span>
+  </div>
+
   <div id="loadError" class="error-msg" style="display:none;"></div>
 
   <section class="block" id="sizeSection" style="display:none;">
@@ -66,9 +76,18 @@
       <button type="button" class="btn secondary toolbar-btn" id="undoBtn" title="Undo last move (Ctrl+Z)">↶ Undo</button>
       <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag" id="skipAssemblyAdTag">Watch ad</span></button>
       <button type="button" class="btn toolbar-btn" id="checkNumbersBtn">✓ Check numbers <span class="check-badge" id="checkBadge"></span></button>
+      <button type="button" class="btn secondary toolbar-btn" id="leaderboardBtn">🏆 Leaderboard</button>
     </div>
     <div id="numberPad" class="number-pad"></div>
     <div class="status" id="status"></div>
+    <div class="leaderboard-panel" id="leaderboardPanel">
+      <div class="leaderboard-header">
+        <h3 id="leaderboardTitle">Leaderboard</h3>
+        <button type="button" class="link-btn" id="leaderboardCloseBtn">Close</button>
+      </div>
+      <p class="leaderboard-status" id="leaderboardStatus"></p>
+      <ol class="leaderboard-list" id="leaderboardList"></ol>
+    </div>
     <div class="share-panel" id="sharePanel">
       <p class="share-summary" id="shareSummary"></p>
       <div class="share-actions">
@@ -85,6 +104,10 @@
   Pazuju &middot; a daily piece-placement puzzle
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script src="Online Game/js/pazuju-firebase.js"></script>
 <script src="Online Game/js/pazuju-xml-loader.js"></script>
 <script src="Online Game/js/pazuju-engine.js"></script>
 <script src="Online Game/js/celebration.js"></script>
@@ -110,6 +133,93 @@ const trayDownBtn = document.getElementById("trayDownBtn");
 trayUpBtn.addEventListener("click", () => game.cycleTrayUp());
 trayDownBtn.addEventListener("click", () => game.cycleTrayDown());
 
+// Nickname shown on leaderboard entries (see recordSolve() in
+// pazuju-firebase.js) - stored on the player's Firebase user doc so it
+// carries across sessions/devices once they're signed in as more than just
+// an anonymous UID. Falls back to "Anonymous" until they set one.
+const nicknameDisplay = document.getElementById("nicknameDisplay");
+const nicknameValueEl = document.getElementById("nicknameValue");
+const nicknameEditBtn = document.getElementById("nicknameEditBtn");
+const nicknameEditForm = document.getElementById("nicknameEditForm");
+const nicknameInput = document.getElementById("nicknameInput");
+const nicknameSaveBtn = document.getElementById("nicknameSaveBtn");
+const nicknameCancelBtn = document.getElementById("nicknameCancelBtn");
+
+function closeNicknameEdit() {
+  nicknameEditForm.style.display = "none";
+  nicknameDisplay.style.display = "";
+}
+
+nicknameEditBtn.addEventListener("click", () => {
+  nicknameInput.value = nicknameValueEl.textContent === "Anonymous" ? "" : nicknameValueEl.textContent;
+  nicknameDisplay.style.display = "none";
+  nicknameEditForm.style.display = "";
+  nicknameInput.focus();
+});
+
+nicknameCancelBtn.addEventListener("click", closeNicknameEdit);
+
+nicknameSaveBtn.addEventListener("click", async () => {
+  const name = nicknameInput.value.trim().slice(0, 20);
+  nicknameSaveBtn.disabled = true;
+  try {
+    await PazujuFirebase.setDisplayName(name);
+    nicknameValueEl.textContent = name || "Anonymous";
+  } catch (err) {
+    console.error("Pazuju: failed to save nickname", err);
+  } finally {
+    nicknameSaveBtn.disabled = false;
+    closeNicknameEdit();
+  }
+});
+
+nicknameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") nicknameSaveBtn.click();
+  if (e.key === "Escape") closeNicknameEdit();
+});
+
+PazujuFirebase.getDisplayName().then((name) => {
+  nicknameValueEl.textContent = name || "Anonymous";
+}).catch((err) => console.error("Pazuju: failed to load nickname", err));
+
+// Streak badge (see users/{uid} fields written by recordSolve() in
+// pazuju-firebase.js) - a per-player stat shown next to the nickname, not
+// tied to any one puzzle. currentStreak is only updated lazily on the next
+// solve, so a streak the player let lapse would otherwise still show its old
+// count until then - yesterdayLocalISO() lets the display itself treat a
+// streak as broken (shows nothing) once its last solve is older than
+// yesterday, without touching the stored value.
+const streakBadge = document.getElementById("streakBadge");
+const streakValueEl = document.getElementById("streakValue");
+
+function yesterdayLocalISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function refreshStreakDisplay() {
+  try {
+    const stats = await PazujuFirebase.getStats();
+    const alive = stats.lastSolvedDate === todayLocalISO() || stats.lastSolvedDate === yesterdayLocalISO();
+    const streak = alive ? stats.currentStreak : 0;
+    if (streak > 0) {
+      streakValueEl.textContent = streak;
+      streakBadge.title = `Best streak: ${stats.longestStreak} day${stats.longestStreak === 1 ? "" : "s"} · ${stats.totalSolved} solved`;
+      streakBadge.style.display = "";
+    } else {
+      streakBadge.style.display = "none";
+    }
+  } catch (err) {
+    console.error("Pazuju: failed to load streak", err);
+  }
+}
+
+refreshStreakDisplay();
+
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
 const undoBtn = document.getElementById("undoBtn");
@@ -123,6 +233,70 @@ const shareBtn = document.getElementById("shareBtn");
 const shareTwitter = document.getElementById("shareTwitter");
 const shareFacebook = document.getElementById("shareFacebook");
 const shareWhatsapp = document.getElementById("shareWhatsapp");
+
+const leaderboardBtn = document.getElementById("leaderboardBtn");
+const leaderboardPanel = document.getElementById("leaderboardPanel");
+const leaderboardTitle = document.getElementById("leaderboardTitle");
+const leaderboardStatus = document.getElementById("leaderboardStatus");
+const leaderboardList = document.getElementById("leaderboardList");
+const leaderboardCloseBtn = document.getElementById("leaderboardCloseBtn");
+
+function closeLeaderboard() {
+  leaderboardPanel.classList.remove("visible");
+}
+
+leaderboardCloseBtn.addEventListener("click", closeLeaderboard);
+
+// Fastest times for the exact puzzle currently open (this date + this size
+// only, not a global ranking) - see getLeaderboard() in pazuju-firebase.js.
+leaderboardBtn.addEventListener("click", async () => {
+  const sizeInfo = manifest.sizes.find(s => s.key === selectedSizeKey);
+  const dateLabel = currentPuzzleDate === todayLocalISO() ? "Today's" : formatDateLong(currentPuzzleDate) + "'s";
+  leaderboardTitle.textContent = `${dateLabel} ${sizeInfo.creature} ${sizeInfo.label} Leaderboard`;
+  leaderboardList.innerHTML = "";
+  leaderboardStatus.textContent = "Loading…";
+  leaderboardStatus.style.display = "block";
+  leaderboardPanel.classList.add("visible");
+  leaderboardBtn.disabled = true;
+
+  const requestDate = currentPuzzleDate;
+  const requestSizeKey = selectedSizeKey;
+  try {
+    const [entries, user] = await Promise.all([
+      PazujuFirebase.getLeaderboard(requestDate, requestSizeKey),
+      PazujuFirebase.ready,
+    ]);
+    // Stale response guard - the player may have switched puzzles while this was in flight.
+    if (currentPuzzleDate !== requestDate || selectedSizeKey !== requestSizeKey) return;
+    if (entries.length === 0) {
+      leaderboardStatus.textContent = "No times recorded yet - be the first to solve it!";
+      return;
+    }
+    leaderboardStatus.style.display = "none";
+    entries.forEach((entry, i) => {
+      const li = document.createElement("li");
+      if (entry.uid === user.uid) li.classList.add("me");
+      const rank = document.createElement("span");
+      rank.className = "lb-rank";
+      rank.textContent = i + 1;
+      const name = document.createElement("span");
+      name.className = "lb-name";
+      name.textContent = entry.displayName || "Anonymous";
+      const time = document.createElement("span");
+      time.className = "lb-time";
+      time.textContent = formatElapsed(entry.elapsedMs);
+      li.append(rank, name, time);
+      leaderboardList.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Pazuju: leaderboard load failed", err);
+    if (currentPuzzleDate !== requestDate || selectedSizeKey !== requestSizeKey) return;
+    leaderboardStatus.textContent = "Couldn't load the leaderboard right now.";
+    leaderboardStatus.style.display = "block";
+  } finally {
+    leaderboardBtn.disabled = false;
+  }
+});
 
 // No real ad network is hooked up yet (see PROJECT_NOTES.md) and there's no
 // traffic to justify setting one up before analytics is in place. Ad-gated
@@ -217,6 +391,11 @@ function updateToolbar(state) {
   const allowsAd = sizeAllowsAdCheck(selectedSizeKey);
   checkNumbersBtn.disabled = !state.hasUserValues || (remaining === 0 && !allowsAd);
 
+  // Sync this puzzle's progress to Firebase on every render (debounced
+  // per-puzzle inside saveProgress, so a burst of moves collapses into one
+  // write) - see pazuju-firebase.js.
+  PazujuFirebase.saveProgress(currentPuzzleDate, selectedSizeKey, { ...game.getState(), elapsedMs: currentElapsedMs() });
+
   if (remaining > 0) {
     checkBadge.textContent = String(remaining);
     checkNumbersBtn.title = `${remaining} free check${remaining === 1 ? "" : "s"} left today`;
@@ -298,6 +477,15 @@ function stopTimer() {
   }
 }
 
+// Elapsed time for whatever's currently synced to Firebase (see
+// PazujuFirebase.saveProgress calls) - the running time if still playing,
+// the frozen final time once solved, or 0 before a puzzle's been opened.
+function currentElapsedMs() {
+  if (finalElapsedMs !== null) return finalElapsedMs;
+  if (timerStartMs !== null) return Date.now() - timerStartMs;
+  return 0;
+}
+
 // Builds the shareable result summary - puzzle identity + time only, no
 // solution/spoiler content. url carries ?date= so a friend opening the link
 // lands straight on the same day's puzzles (see init()'s query handling).
@@ -343,6 +531,13 @@ function handleSolved() {
   stopTimer();
   launchFireworks();
   showShareResult();
+  // Flush immediately rather than relying on the debounced save in
+  // updateToolbar, and record the leaderboard entry + streak update - see
+  // recordSolve() in pazuju-firebase.js.
+  PazujuFirebase.flushProgress(currentPuzzleDate, selectedSizeKey, { ...game.getState(), elapsedMs: finalElapsedMs ?? 0 });
+  PazujuFirebase.recordSolve({ date: currentPuzzleDate, sizeKey: selectedSizeKey, elapsedMs: finalElapsedMs ?? 0 })
+    .then(refreshStreakDisplay)
+    .catch((err) => console.error("Pazuju: recordSolve failed", err));
 }
 
 // Fits the board to the viewport instead of always rendering at the
@@ -362,6 +557,14 @@ function handleViewportResize() {
 }
 window.addEventListener("resize", handleViewportResize);
 window.addEventListener("orientationchange", handleViewportResize);
+
+// Bypass the debounced save when the tab is about to go away, so the
+// player's latest move isn't lost if it hasn't fired yet.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && selectedSizeKey && currentPuzzleDate) {
+    PazujuFirebase.flushProgress(currentPuzzleDate, selectedSizeKey, { ...game.getState(), elapsedMs: currentElapsedMs() });
+  }
+});
 
 function todayLocalISO() {
   const d = new Date();
@@ -420,6 +623,7 @@ async function loadDate(date) {
   currentPuzzleDate = date;
   stopTimer();
   sharePanel.classList.remove("visible");
+  closeLeaderboard();
 
   dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
   dateSub.textContent = "Pick a size to start playing.";
@@ -456,6 +660,7 @@ function selectSize(sizeKey, cardEl) {
   const sizeInfo = manifest.sizes.find(s => s.key === sizeKey);
   puzzleMeta.textContent = `${sizeInfo.creature} ${sizeInfo.label} · ${difficultyCategory(puzzle.difficulty)} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
   sharePanel.classList.remove("visible");
+  closeLeaderboard();
   wasReadyForNumbers = false;
   fadeInTray();
   numberPadEl.style.opacity = "0";
@@ -463,6 +668,17 @@ function selectSize(sizeKey, cardEl) {
   startTimer();
   gameArea.classList.add("active");
   gameArea.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Resume any progress synced from a previous session/device for this exact
+  // puzzle. The read is async, so guard against a stale response landing
+  // after the player has already navigated to a different size/date.
+  const requestDate = currentPuzzleDate;
+  PazujuFirebase.loadProgress(requestDate, sizeKey).then((saved) => {
+    if (!saved) return;
+    if (currentPuzzleDate !== requestDate || selectedSizeKey !== sizeKey) return;
+    game.restoreState(saved);
+    if (saved.elapsedMs) timerStartMs = Date.now() - saved.elapsedMs;
+  }).catch((err) => console.error("Pazuju: progress load failed", err));
 }
 
 async function init() {

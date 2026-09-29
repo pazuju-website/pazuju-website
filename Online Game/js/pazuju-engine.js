@@ -95,6 +95,37 @@ class PazujuGame {
     return this.history.length > 0 && !this.dragging && !this._animating && !this._hasCelebrated;
   }
 
+  // Plain-object snapshot of persistable player progress (placed pieces,
+  // unplaced pieces, entered numbers, locked cells) - for a caller to sync
+  // to a backend. Deliberately excludes UI-only state (selectedCell,
+  // highlightValue, drag state). See restoreState() for the inverse.
+  getState() {
+    return {
+      placed: this.placed,
+      unplaced: this.unplaced,
+      userValues: this.userValues,
+      lockedCells: [...this.lockedCells],
+      solved: this._hasCelebrated,
+    };
+  }
+
+  // Restores a previously-captured snapshot (see getState()) onto the puzzle
+  // that's already been loaded via loadPuzzle() - for resuming progress
+  // synced from a backend. Assumes the same puzzle (piece ids/cells/givens
+  // unchanged); only overwrites the player's own placement/entry state.
+  // Clears undo history since the restored pieces didn't come from a chain
+  // of local actions the player could step back through.
+  restoreState(state) {
+    if (!state) return;
+    if (state.placed) this.placed = state.placed;
+    if (state.unplaced) this.unplaced = state.unplaced;
+    this.userValues = state.userValues || {};
+    this.lockedCells = new Set(state.lockedCells || []);
+    this.history = [];
+    this._hasCelebrated = !!state.solved;
+    this._renderAll();
+  }
+
   undo() {
     if (!this.canUndo()) return false;
     const st = JSON.parse(this.history.pop());
