@@ -12,6 +12,7 @@ const port = parseInt(process.argv[2] || "8080", 10);
 const types = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
   ".xml": "application/xml", ".csv": "text/csv", ".json": "application/json",
+  ".webmanifest": "application/manifest+json", ".png": "image/png",
 };
 
 http.createServer((req, res) => {

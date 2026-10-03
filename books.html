@@ -17,7 +17,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site.css">
-<link rel="icon" href="images/pazuju-logo.png">
+<link rel="icon" href="images/icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="images/icons/favicon-16.png" sizes="16x16">
+<link rel="apple-touch-icon" href="images/icons/apple-touch-icon.png">
+<link rel="manifest" href="app.webmanifest">
+<meta name="theme-color" content="#431f11">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+</script>
 </head>
 <body>
 
