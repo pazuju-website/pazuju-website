@@ -154,6 +154,10 @@ Standing menu of the big open initiatives, so a new session can ask the user whi
 - ~~No analytics on the site at all~~ **Resolved 2026-09-22** — GA4 is now live, see Architecture's "Google Analytics (GA4)" entry.
 - **New 2026-09-29**: local dev and production share one live Firebase project (`pazuju-67d8a`), no separate dev/staging environment — worth deciding whether that's fine long-term or whether a second Firebase project for local testing is worth setting up later. (Test data this exposed was cleaned up 2026-09-29 — see "Where we left off" — but the underlying shared-project setup is still the case.)
 
+## AdSense check (2026-10-16)
+
+Still **"Getting ready"**, unchanged since submission on 2026-09-22 (~24 days now, past Google's usual "couple of weeks"). The dashboard's Ads.txt column shows "Not found" again, but the file is live and correct: `https://pazuju.com/ads.txt` returns 200 with `google.com, pub-2616129249983166, DIRECT, f08c47fec0942fa0`, and the `http://` and `www.` variants 301 to it. That points to a stale crawl. The "add your payment info" banner is still showing, so the Payments onboarding step probably isn't done yet (the user has to do this themselves).
+
 ## Where we left off (2026-10-03, session paused mid-task — user shutting down for the day)
 
 **Session not fully closed out** — picking the Android Studio/Bubblewrap toolchain back up is the very next thing to do next time, before anything else.
