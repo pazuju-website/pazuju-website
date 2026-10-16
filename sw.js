@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pazuju-shell-v2';
+const CACHE_VERSION = 'pazuju-shell-v3';
 
 const SHELL_ASSETS = [
   '/',
@@ -6,6 +6,8 @@ const SHELL_ASSETS = [
   '/play.html',
   '/books.html',
   '/privacy.html',
+  '/about.html',
+  '/contact.html',
   '/css/site.css',
   '/app.webmanifest',
   '/images/pazuju-logo.png',

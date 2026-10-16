@@ -964,6 +964,8 @@ section.block h2 {
   color: var(--ink);
 }
 
+.prose > h2:first-child { margin-top: 0; }
+
 .prose h2 {
   font-size: 22px;
   margin: 36px 0 10px;
