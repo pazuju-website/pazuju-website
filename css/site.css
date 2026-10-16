@@ -942,3 +942,35 @@ section.block h2 {
   background-color: var(--wood-dark-2);
   background-image: linear-gradient(180deg, var(--wood-dark-1), var(--wood-dark-2));
 }
+
+/* Footer link row (privacy/about/contact) under the tagline. */
+.footer-links {
+  margin-top: 8px;
+}
+
+.footer-links a {
+  color: var(--cream);
+  opacity: 0.85;
+  margin: 0 8px;
+}
+
+.footer-links a:hover { color: var(--rust-light); opacity: 1; }
+
+/* Long-form text pages (privacy policy, about, contact). */
+.prose {
+  max-width: 720px;
+  margin: 0 auto;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.prose h2 {
+  font-size: 22px;
+  margin: 36px 0 10px;
+  color: var(--wood-dark-2);
+}
+
+.prose ul { padding-left: 22px; }
+.prose li { margin-bottom: 6px; }
+.prose a { color: var(--rust-dark); }
+.prose .updated { color: var(--muted); font-size: 14px; }
