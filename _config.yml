@@ -1,0 +1,21 @@
+# GitHub Pages builds this repo with Jekyll. Keep internal/dev files out of the
+# published site - they're repo-only (notes, dev server, test pages, print assets).
+exclude:
+  - PROJECT_NOTES.md
+  - serve.js
+  - scripts
+  - "Images from the game"
+  - "Online Game/Pazuju Output Files"
+  - "Online Game/Puzzle1.csv"
+  - "Online Game/Puzzle1.html"
+  - "Online Game/Puzzle1.xml"
+  - "Online Game/Puzzle2.csv"
+  - "Online Game/Puzzle2.html"
+  - "Online Game/Puzzle2.xml"
+  - "Online Game/Puzzle3.csv"
+  - "Online Game/Puzzle3.html"
+  - "Online Game/Puzzle3.xml"
+  - "Online Game/engine-test.html"
+  - "Online Game/pazuju_puzzle_308_v2.html"
+  - Game_Output_Files
+  - "DNS Records.txt"
