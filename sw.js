@@ -1,9 +1,10 @@
-const CACHE_VERSION = 'pazuju-shell-v5';
+const CACHE_VERSION = 'pazuju-shell-v6';
 
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/play.html',
+  '/cm-signup-frame.html',
   '/books.html',
   '/privacy.html',
   '/about.html',

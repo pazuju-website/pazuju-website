@@ -204,61 +204,12 @@ const PazujuFirebase = (() => {
     }
   }
 
-  // Fill these in from brokermail.ca's Campaign Monitor list -> Forms ->
-  // the "paste code onto your site" embed generator: `action` is the
-  // generated form's action= URL (a createsend.com link), emailField/
-  // nameField are the input name= attributes from that same generated HTML
-  // (commonly "cm-xxxxx-xxxxx" for email, similar for name - copy exactly
-  // what's generated, don't guess). Submission is a plain form POST straight
-  // to Campaign Monitor's own servers - no API key, no backend involved.
-  // Until these are filled in, signup still works (name/email are still
-  // saved to Firestore below) - it just isn't pushed to the mailing list yet.
-  const CAMPAIGN_MONITOR_FORM = {
-    action: "",
-    emailField: "",
-    nameField: "",
-  };
-
-  // Submits into a disposable hidden iframe rather than the main window, so
-  // the player's page never navigates away to Campaign Monitor's own
-  // thank-you page - the standard pattern for embedded ESP signup forms.
-  function submitToCampaignMonitor(firstName, email) {
-    if (!CAMPAIGN_MONITOR_FORM.action) {
-      console.warn("Pazuju: Campaign Monitor form not configured yet - signup saved locally only.");
-      return;
-    }
-    let iframe = document.getElementById("cmSignupFrame");
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "cmSignupFrame";
-      iframe.name = "cmSignupFrame";
-      iframe.style.display = "none";
-      document.body.appendChild(iframe);
-    }
-
-    const form = document.createElement("form");
-    form.action = CAMPAIGN_MONITOR_FORM.action;
-    form.method = "POST";
-    form.target = "cmSignupFrame";
-    form.style.display = "none";
-
-    const emailInput = document.createElement("input");
-    emailInput.name = CAMPAIGN_MONITOR_FORM.emailField;
-    emailInput.value = email;
-    form.appendChild(emailInput);
-
-    if (CAMPAIGN_MONITOR_FORM.nameField) {
-      const nameInput = document.createElement("input");
-      nameInput.name = CAMPAIGN_MONITOR_FORM.nameField;
-      nameInput.value = firstName;
-      form.appendChild(nameInput);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
-    form.remove();
-  }
-
+  // Campaign Monitor's actual embedded-form product (via brokermail.ca) uses
+  // its own client-side script + a hidden form with a data-id token, not a
+  // plain POST to a fixed URL - the generated form, field names, and script
+  // tag live directly in play.html's markup (search for "cmSignupHidden"),
+  // and submitToCampaignMonitor() in play.html drives that real form rather
+  // than reconstructing one here. This module only owns the Firestore side.
   async function registerPlayer(firstName, email) {
     const user = await ready;
     await firestoreDb.collection("users").doc(user.uid).set({
@@ -269,7 +220,6 @@ const PazujuFirebase = (() => {
       lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     setRegisteredLocal();
-    submitToCampaignMonitor(firstName, email);
   }
 
   // Called once per puzzle solve (see handleSolved() in play.html). Writes

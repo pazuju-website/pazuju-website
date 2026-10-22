@@ -278,6 +278,25 @@ function closeSignupModal() {
   signupOverlay.classList.remove("visible");
 }
 
+// Drives Campaign Monitor's hidden embedded form, which lives in its own
+// document inside the cmSignupFrame iframe (see cm-signup-frame.html and the
+// comment near that iframe at the end of body) - reaches in via same-origin
+// DOM access (no postMessage needed) to fill the fields and trigger the real
+// submit, which their bundled script intercepts and handles, including its
+// own success redirect, fully confined to that iframe.
+function submitToCampaignMonitor(firstName, email) {
+  try {
+    const frameDoc = document.getElementById("cmSignupFrame").contentDocument;
+    const form = frameDoc.getElementById("subForm");
+    frameDoc.getElementById("fieldName").value = firstName;
+    frameDoc.getElementById("fieldEmail").value = email;
+    if (form.requestSubmit) form.requestSubmit();
+    else form.submit();
+  } catch (err) {
+    console.error("Pazuju: Campaign Monitor submit failed", err);
+  }
+}
+
 signupCloseBtn.addEventListener("click", closeSignupModal);
 signupOverlay.addEventListener("click", (e) => {
   if (e.target === signupOverlay) closeSignupModal();
@@ -292,6 +311,7 @@ signupForm.addEventListener("submit", async (e) => {
   signupSubmitBtn.disabled = true;
   try {
     await PazujuFirebase.registerPlayer(firstName, email);
+    submitToCampaignMonitor(firstName, email);
     registered = true;
     closeSignupModal();
     signupForm.reset();
@@ -862,5 +882,17 @@ async function init() {
 
 init();
 </script>
+
+<!-- Campaign Monitor's embedded signup form (brokermail.ca list) lives in its
+     own document, cm-signup-frame.html, loaded only inside this hidden
+     iframe - never shown to players. Needed because testing showed
+     copypastesubscribeformlogic.js redirects via plain `window.location` on
+     success (not a form-target-respecting response, and not an invisible
+     AJAX call either) - putting the form+script in a nested iframe means
+     that `window` is the iframe's own, so the redirect stays confined there
+     instead of navigating the player's actual game page. submitToCampaignMonitor()
+     (in the script block above) reaches into this same-origin iframe to fill
+     the fields and trigger the real submit. -->
+<iframe id="cmSignupFrame" src="cm-signup-frame.html" style="display:none;" aria-hidden="true" title="Campaign Monitor signup (hidden)"></iframe>
 </body>
 </html>
