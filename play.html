@@ -62,6 +62,26 @@
 
   <div id="loadError" class="error-msg" style="display:none;"></div>
 
+  <div class="signup-overlay" id="signupOverlay">
+    <div class="signup-modal">
+      <button type="button" class="signup-modal-close" id="signupCloseBtn" aria-label="Close">&times;</button>
+      <h3>Get free access</h3>
+      <p class="signup-modal-copy">Unlock all 3 daily puzzles and the full archive of past days &mdash; free, just your name and email.</p>
+      <form id="signupForm">
+        <label for="signupFirstName">First name</label>
+        <input type="text" id="signupFirstName" maxlength="40" required>
+        <label for="signupEmail">Email</label>
+        <input type="email" id="signupEmail" maxlength="100" required>
+        <label class="signup-consent">
+          <input type="checkbox" id="signupConsent" required>
+          <span>I agree to receive occasional emails from Pazuju. Unsubscribe anytime.</span>
+        </label>
+        <p class="signup-error" id="signupError" style="display:none;"></p>
+        <button type="submit" class="btn toolbar-btn" id="signupSubmitBtn">Unlock free access</button>
+      </form>
+    </div>
+  </div>
+
   <section class="block" id="sizeSection" style="display:none;">
     <div class="size-grid" id="sizeGrid"></div>
   </section>
@@ -233,6 +253,57 @@ async function refreshStreakDisplay() {
 }
 
 refreshStreakDisplay();
+
+// Free-account signup gate: a signed-out visitor gets one puzzle size for
+// the current day (rotated - see freeSizeKeyForDate below) plus can't browse
+// the archive; registering (name + email, no password) unlocks both. See
+// registerPlayer() in pazuju-firebase.js for what's stored.
+let registered = false;
+const signupOverlay = document.getElementById("signupOverlay");
+const signupCloseBtn = document.getElementById("signupCloseBtn");
+const signupForm = document.getElementById("signupForm");
+const signupFirstName = document.getElementById("signupFirstName");
+const signupEmail = document.getElementById("signupEmail");
+const signupConsent = document.getElementById("signupConsent");
+const signupError = document.getElementById("signupError");
+const signupSubmitBtn = document.getElementById("signupSubmitBtn");
+
+function openSignupModal() {
+  signupError.style.display = "none";
+  signupOverlay.classList.add("visible");
+  signupFirstName.focus();
+}
+
+function closeSignupModal() {
+  signupOverlay.classList.remove("visible");
+}
+
+signupCloseBtn.addEventListener("click", closeSignupModal);
+signupOverlay.addEventListener("click", (e) => {
+  if (e.target === signupOverlay) closeSignupModal();
+});
+
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const firstName = signupFirstName.value.trim().slice(0, 40);
+  const email = signupEmail.value.trim().slice(0, 100);
+  if (!firstName || !email || !signupConsent.checked) return;
+
+  signupSubmitBtn.disabled = true;
+  try {
+    await PazujuFirebase.registerPlayer(firstName, email);
+    registered = true;
+    closeSignupModal();
+    signupForm.reset();
+    if (manifest) renderSizeCards(); // unlock immediately without refetching puzzles
+  } catch (err) {
+    console.error("Pazuju: signup failed", err);
+    signupError.textContent = "Something went wrong - please try again.";
+    signupError.style.display = "block";
+  } finally {
+    signupSubmitBtn.disabled = false;
+  }
+});
 
 const gameToolbar = document.getElementById("gameToolbar");
 const skipAssemblyBtn = document.getElementById("skipAssemblyBtn");
@@ -629,6 +700,52 @@ let sizePuzzles = {}; // sizeKey -> parsed puzzle for the currently viewed date
 let selectedSizeKey = null;
 let currentPuzzleDate = null;
 
+// The free (non-signed-up) tier gets exactly one board size per day, always
+// a Beginner-tier puzzle. Per the difficulty-mix rule (see PROJECT_NOTES.md),
+// 2 of the 3 sizes are Beginner on any given day and the 3rd is harder, with
+// which size gets the harder puzzle randomized day to day - so alternating
+// between whichever 2 sizes are Beginner *that day* naturally balances all 3
+// sizes close to evenly over time without needing to track history.
+function freeSizeKeyForDate(date) {
+  const beginnerKeys = manifest.sizes.map(s => s.key).filter(k => difficultyCategory(sizePuzzles[k].difficulty) === "Beginner");
+  const pool = beginnerKeys.length ? beginnerKeys : manifest.sizes.map(s => s.key);
+  const dayIndex = Math.floor(Date.parse(date + "T00:00:00Z") / 86400000);
+  return pool[((dayIndex % pool.length) + pool.length) % pool.length];
+}
+
+// "Today" for gating purposes is whichever date is the latest released one,
+// matching what loads by default - not strictly the calendar date, in case
+// today's puzzles haven't been added to the manifest yet.
+function isLatestDate(date) {
+  return releasedDates.length > 0 && date === releasedDates[releasedDates.length - 1];
+}
+
+// Renders the size cards for sizePuzzles/currentPuzzleDate already in memory
+// - split out from loadDate so a fresh signup can unlock the current day
+// instantly without refetching XML that's already loaded.
+function renderSizeCards() {
+  const onFreeDay = isLatestDate(currentPuzzleDate);
+  const freeSizeKey = (onFreeDay && !registered) ? freeSizeKeyForDate(currentPuzzleDate) : null;
+
+  sizeGrid.innerHTML = "";
+  manifest.sizes.forEach(sizeInfo => {
+    const puzzle = sizePuzzles[sizeInfo.key];
+    const locked = onFreeDay && !registered && sizeInfo.key !== freeSizeKey;
+    const card = document.createElement("div");
+    card.className = "size-card" + (locked ? " locked" : "");
+    let tag = "";
+    if (locked) tag = `<div class="size-card-lock">🔒 Free account to unlock</div>`;
+    else if (freeSizeKey === sizeInfo.key) tag = `<div class="size-card-free-tag">Free today</div>`;
+    card.innerHTML = `<img class="plaque" src="${sizeInfo.icon}" alt="${sizeInfo.creature}"><div class="dims">${sizeInfo.label}</div><div class="difficulty">${difficultyCategory(puzzle.difficulty)}</div>${tag}`;
+    card.addEventListener("click", () => locked ? openSignupModal() : selectSize(sizeInfo.key, card));
+    sizeGrid.appendChild(card);
+  });
+  sizeSection.style.display = "block";
+
+  archiveDateInput.disabled = !registered;
+  archiveDateInput.title = registered ? "" : "Sign up free to browse past puzzles";
+}
+
 async function loadDate(date) {
   loadError.style.display = "none";
   gameArea.classList.remove("active");
@@ -653,16 +770,19 @@ async function loadDate(date) {
     return;
   }
 
-  sizeGrid.innerHTML = "";
-  manifest.sizes.forEach(sizeInfo => {
-    const puzzle = sizePuzzles[sizeInfo.key];
-    const card = document.createElement("div");
-    card.className = "size-card";
-    card.innerHTML = `<img class="plaque" src="${sizeInfo.icon}" alt="${sizeInfo.creature}"><div class="dims">${sizeInfo.label}</div><div class="difficulty">${difficultyCategory(puzzle.difficulty)}</div>`;
-    card.addEventListener("click", () => selectSize(sizeInfo.key, card));
-    sizeGrid.appendChild(card);
-  });
-  sizeSection.style.display = "block";
+  renderSizeCards();
+}
+
+// Guards against a non-signed-up visitor reaching an archive date directly
+// (e.g. a stale ?date= link, or re-enabling the disabled date input) - bounces
+// back to today's puzzles and prompts the signup gate instead.
+async function goToDate(date) {
+  if (!registered && !isLatestDate(date)) {
+    archiveDateInput.value = releasedDates[releasedDates.length - 1];
+    openSignupModal();
+    return;
+  }
+  await loadDate(date);
 }
 
 function selectSize(sizeKey, cardEl) {
@@ -704,6 +824,8 @@ async function init() {
     return;
   }
 
+  registered = await PazujuFirebase.isRegistered().catch(() => false);
+
   const today = todayLocalISO();
   releasedDates = manifest.dates.filter(d => d <= today).sort();
 
@@ -712,14 +834,18 @@ async function init() {
     return;
   }
 
+  const latestDate = releasedDates[releasedDates.length - 1];
+
   // A shared result link carries ?date=YYYY-MM-DD (see buildShareText) so the
-  // friend opening it lands straight on that day's puzzles instead of today's.
+  // friend opening it lands straight on that day's puzzles instead of
+  // today's - but the archive itself is gated, so a signed-out visitor still
+  // only ever lands on the latest date, not an arbitrary shared past one.
   const requestedDate = new URLSearchParams(location.search).get("date");
-  const currentDate = (requestedDate && releasedDates.includes(requestedDate))
+  const currentDate = (requestedDate && releasedDates.includes(requestedDate) && (registered || requestedDate === latestDate))
     ? requestedDate
-    : releasedDates[releasedDates.length - 1];
+    : latestDate;
   archiveDateInput.min = releasedDates[0];
-  archiveDateInput.max = releasedDates[releasedDates.length - 1];
+  archiveDateInput.max = latestDate;
   archiveDateInput.value = currentDate;
 
   archiveDateInput.addEventListener("change", () => {
@@ -728,7 +854,7 @@ async function init() {
       showError("No puzzles were released on that date. Pick a highlighted date instead.");
       return;
     }
-    loadDate(chosen);
+    goToDate(chosen);
   });
 
   await loadDate(currentDate);

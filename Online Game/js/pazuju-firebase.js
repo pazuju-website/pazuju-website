@@ -165,6 +165,113 @@ const PazujuFirebase = (() => {
     }, { merge: true });
   }
 
+  // --- Free account signup (first name + email) -----------------------------
+  // "Registered" is a flag on the same anonymous users/{uid} doc everything
+  // else already writes to - there's no separate password-based login, so
+  // this only persists on the browser that signed up (same limitation
+  // progress-sync already has). A localStorage flag gives an instant local
+  // answer (no Firestore round-trip needed once set, since the status never
+  // reverts), with Firestore as the backing/authoritative copy.
+  const REGISTERED_KEY = "pazuju-registered";
+
+  function isRegisteredLocal() {
+    try {
+      return localStorage.getItem(REGISTERED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function setRegisteredLocal() {
+    try {
+      localStorage.setItem(REGISTERED_KEY, "1");
+    } catch {
+      /* storage unavailable - falls back to the Firestore read each check */
+    }
+  }
+
+  async function isRegistered() {
+    if (isRegisteredLocal()) return true;
+    try {
+      const user = await ready;
+      const snap = await firestoreDb.collection("users").doc(user.uid).get();
+      const reg = snap.exists && !!snap.data().registered;
+      if (reg) setRegisteredLocal();
+      return reg;
+    } catch (err) {
+      console.error("Pazuju: registration check failed", err);
+      return false;
+    }
+  }
+
+  // Fill these in from brokermail.ca's Campaign Monitor list -> Forms ->
+  // the "paste code onto your site" embed generator: `action` is the
+  // generated form's action= URL (a createsend.com link), emailField/
+  // nameField are the input name= attributes from that same generated HTML
+  // (commonly "cm-xxxxx-xxxxx" for email, similar for name - copy exactly
+  // what's generated, don't guess). Submission is a plain form POST straight
+  // to Campaign Monitor's own servers - no API key, no backend involved.
+  // Until these are filled in, signup still works (name/email are still
+  // saved to Firestore below) - it just isn't pushed to the mailing list yet.
+  const CAMPAIGN_MONITOR_FORM = {
+    action: "",
+    emailField: "",
+    nameField: "",
+  };
+
+  // Submits into a disposable hidden iframe rather than the main window, so
+  // the player's page never navigates away to Campaign Monitor's own
+  // thank-you page - the standard pattern for embedded ESP signup forms.
+  function submitToCampaignMonitor(firstName, email) {
+    if (!CAMPAIGN_MONITOR_FORM.action) {
+      console.warn("Pazuju: Campaign Monitor form not configured yet - signup saved locally only.");
+      return;
+    }
+    let iframe = document.getElementById("cmSignupFrame");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "cmSignupFrame";
+      iframe.name = "cmSignupFrame";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+    }
+
+    const form = document.createElement("form");
+    form.action = CAMPAIGN_MONITOR_FORM.action;
+    form.method = "POST";
+    form.target = "cmSignupFrame";
+    form.style.display = "none";
+
+    const emailInput = document.createElement("input");
+    emailInput.name = CAMPAIGN_MONITOR_FORM.emailField;
+    emailInput.value = email;
+    form.appendChild(emailInput);
+
+    if (CAMPAIGN_MONITOR_FORM.nameField) {
+      const nameInput = document.createElement("input");
+      nameInput.name = CAMPAIGN_MONITOR_FORM.nameField;
+      nameInput.value = firstName;
+      form.appendChild(nameInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+  }
+
+  async function registerPlayer(firstName, email) {
+    const user = await ready;
+    await firestoreDb.collection("users").doc(user.uid).set({
+      firstName: firstName || null,
+      email: email || null,
+      registered: true,
+      registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    setRegisteredLocal();
+    submitToCampaignMonitor(firstName, email);
+  }
+
   // Called once per puzzle solve (see handleSolved() in play.html). Writes
   // the leaderboard entry and updates the player's streak in one go - both
   // run inside one transaction (reading the current displayName/streak off
@@ -203,5 +310,5 @@ const PazujuFirebase = (() => {
     });
   }
 
-  return { ready, saveProgress, flushProgress, loadProgress, recordSolve, getDisplayName, setDisplayName, getLeaderboard, getStats };
+  return { ready, saveProgress, flushProgress, loadProgress, recordSolve, getDisplayName, setDisplayName, getLeaderboard, getStats, isRegistered, registerPlayer };
 })();
