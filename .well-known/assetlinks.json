@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.pazuju.twa",
+        "sha256_cert_fingerprints": ["A4:15:DD:37:2D:9B:11:E1:52:01:61:47:DC:EF:E2:0D:4E:04:36:4A:55:18:81:DF:2B:F0:31:0D:70:B7:F2:C1"]
+      }
+    }]

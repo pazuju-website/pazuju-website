@@ -1,5 +1,9 @@
 # GitHub Pages builds this repo with Jekyll. Keep internal/dev files out of the
 # published site - they're repo-only (notes, dev server, test pages, print assets).
+# Jekyll excludes dotfiles/dot-folders by default, so .well-known must be explicitly
+# included or files like assetlinks.json would silently never be published.
+include:
+  - .well-known
 exclude:
   - PROJECT_NOTES.md
   - serve.js
