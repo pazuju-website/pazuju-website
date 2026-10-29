@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pazuju-shell-v6';
+const CACHE_VERSION = 'pazuju-shell-v7';
 
 const SHELL_ASSETS = [
   '/',

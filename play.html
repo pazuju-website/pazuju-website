@@ -818,8 +818,8 @@ function selectSize(sizeKey, cardEl) {
   wasReadyForNumbers = false;
   fadeInTray();
   numberPadEl.style.opacity = "0";
-  game.loadPuzzle(puzzle);
   startTimer();
+  game.loadPuzzle(puzzle);
   gameArea.classList.add("active");
   gameArea.scrollIntoView({ behavior: "smooth", block: "start" });
 
