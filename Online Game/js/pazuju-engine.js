@@ -3,7 +3,7 @@
 // produced by pazuju-xml-loader.js and renders/drives a single puzzle instance
 // inside caller-supplied DOM elements.
 class PazujuGame {
-  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange, boardMaxPx }) {
+  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange, boardMaxPx, trayMode }) {
     this.boardEl = boardEl;
     this.trayEl = trayEl;
     this.statusEl = statusEl;
@@ -13,6 +13,14 @@ class PazujuGame {
     // Lets a smaller embed (e.g. the homepage teaser) render a more compact
     // board than the full play page without touching the sizing logic itself.
     this.boardMaxPx = boardMaxPx || 520;
+    // "list" (default) stacks every unplaced piece in trayEl, as the website
+    // does. "paged" (the app's own layout) shows a fixed-size circular
+    // sliding window of trayWindowSize pieces, with trayShiftLeft()/
+    // trayShiftRight() to move through the rest one piece at a time - see
+    // _renderTray()/_renderTrayPaged().
+    this.trayMode = trayMode === "paged" ? "paged" : "list";
+    this.trayWindowSize = 3;
+    this.trayWindowStart = 0;
     this.dragging = null;
     this.selectedCell = null;
     this.highlightValue = null;
@@ -60,6 +68,7 @@ class PazujuGame {
     this.highlightValue = null;
     this._hasCelebrated = false;
     this._animating = false;
+    this.trayWindowStart = 0;
 
     this._applyCellSizing();
     this._renderAll();
@@ -143,6 +152,15 @@ class PazujuGame {
     this.boardEl.style.width = (this.size * this.cell) + "px";
     this.boardEl.style.height = (this.size * this.cell) + "px";
     this.boardEl.style.backgroundSize = `${this.cell}px ${this.cell}px`;
+    if (this.trayMode === "paged") {
+      // Fixed height, independent of which pieces are currently in the
+      // window or how they're rotated - a piece that rotates into a taller
+      // bounding box doesn't resize this area, it just pokes out past the
+      // edge instead (see native.css's #tray overflow:visible). Baseline of
+      // 3 cells tall comfortably fits most piece shapes; taller ones (4-5
+      // cells, this generator's max) are the deliberate overflow case.
+      this.trayEl.style.height = (this.trayCell * 3 + 20) + "px";
+    }
   }
 
   // Lets the caller re-fit the board to the viewport (e.g. on resize/rotate)
@@ -370,6 +388,10 @@ class PazujuGame {
 
   _renderTray() {
     this.trayEl.querySelectorAll(".piece-wrap").forEach(el => el.remove());
+    if (this.trayMode === "paged") {
+      this._renderTrayPaged();
+      return;
+    }
     // Static header controls (see play.html) live in the tray markup outside
     // the piece-wraps this method manages - just keep their enabled state in
     // sync with whether there's anything left to cycle through.
@@ -388,16 +410,65 @@ class PazujuGame {
   // Cycles the tray order so a different piece lands in the reachable top
   // slot - on a phone, only the first piece or two are easily reachable
   // without scrolling, and the easiest piece to start with isn't always the
-  // one the generator happened to list first.
+  // one the generator happened to list first. List mode only (website).
   cycleTrayUp() {
-    if (this.unplaced.length < 2) return;
+    if (this.trayMode !== "list" || this.unplaced.length < 2) return;
     this.unplaced.push(this.unplaced.shift());
     this._renderTray();
   }
 
   cycleTrayDown() {
-    if (this.unplaced.length < 2) return;
+    if (this.trayMode !== "list" || this.unplaced.length < 2) return;
     this.unplaced.unshift(this.unplaced.pop());
+    this._renderTray();
+  }
+
+  // Paged tray mode (the app's own layout, see trayMode in the constructor) -
+  // shows a fixed-size circular sliding window (this.trayWindowSize pieces,
+  // default 3) into this.unplaced rather than every piece at once. Pressing
+  // "shift left" advances the window by exactly one piece and wraps around
+  // (e.g. with 6 pieces: [1,2,3] -> [2,3,4] -> [3,4,5] -> [4,5,6] -> [5,6,1]);
+  // "shift right" moves back by one, also wrapping. this.trayWindowStart is
+  // re-clamped (mod unplaced.length) on every render, so it self-corrects
+  // after any placement/return/skip-assembly change to this.unplaced without
+  // needing to track every mutation site individually.
+  _renderTrayPaged() {
+    const total = this.unplaced.length;
+    const windowSize = Math.min(this.trayWindowSize, total);
+    if (total === 0) {
+      this.trayWindowStart = 0;
+    } else {
+      this.trayWindowStart = ((this.trayWindowStart % total) + total) % total;
+    }
+
+    const canCycle = total > this.trayWindowSize;
+    this.trayEl.querySelectorAll(".tray-page-btn").forEach(btn => {
+      btn.disabled = !canCycle;
+    });
+
+    for (let i = 0; i < windowSize; i++) {
+      const p = this.unplaced[(this.trayWindowStart + i) % total];
+      const wrap = document.createElement("div");
+      wrap.className = "piece-wrap";
+      this._layoutPieceWrap(wrap, p, this.trayCell);
+      wrap.addEventListener("pointerdown", (e) => this._startDrag(e, p, wrap));
+      this.trayEl.appendChild(wrap);
+    }
+  }
+
+  // Called by the "shift left" button - advances the window by one piece
+  // (the piece that falls off the left becomes reachable again by shifting
+  // right), wrapping circularly through this.unplaced.
+  trayShiftLeft() {
+    if (this.trayMode !== "paged" || this.unplaced.length <= this.trayWindowSize) return;
+    this.trayWindowStart += 1;
+    this._renderTray();
+  }
+
+  // Called by the "shift right" button - moves the window back by one piece.
+  trayShiftRight() {
+    if (this.trayMode !== "paged" || this.unplaced.length <= this.trayWindowSize) return;
+    this.trayWindowStart -= 1;
     this._renderTray();
   }
 
