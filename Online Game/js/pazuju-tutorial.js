@@ -119,6 +119,20 @@ class PazujuTutorial {
     this.el.style.setProperty("--tail-left", tailLeft + "px");
   }
 
+  // Re-validates the currently-showing step's target - for a page to call on
+  // every engine render. Catches a target that silently became hidden after
+  // its bubble already rendered (e.g. resumed progress jumping straight to
+  // the number stage moments after the assembly-stage steps were enqueued,
+  // before the player ever saw/dismissed the first one) and advances past it
+  // instead of leaving the bubble pinned to a now-vanished element's
+  // zero-size rect.
+  recheck() {
+    if (this.active && this._target && this._target.offsetParent === null) {
+      this._dismissCurrent();
+      this._showNext();
+    }
+  }
+
   _advance() {
     this._dismissCurrent();
     this._showNext();

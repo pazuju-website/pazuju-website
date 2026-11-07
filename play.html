@@ -573,7 +573,13 @@ const TRAY_FADE_MS = 400;
 function fadeOutTray() {
   clearTimeout(trayEl._fadeTimeout);
   trayEl.style.opacity = "0";
-  trayEl._fadeTimeout = setTimeout(() => { trayEl.style.display = "none"; }, TRAY_FADE_MS);
+  // trayEl only actually goes display:none here, 400ms after this fires with
+  // no render/onStateChange call of its own - a tutorial bubble still
+  // anchored to the tray at this exact moment (e.g. resumed progress jumping
+  // straight to the number stage before the player ever dismissed the
+  // assembly-stage tip) would otherwise never get re-checked and stay
+  // pinned to a now-vanished element. See recheck() in pazuju-tutorial.js.
+  trayEl._fadeTimeout = setTimeout(() => { trayEl.style.display = "none"; tutorial.recheck(); }, TRAY_FADE_MS);
 }
 
 function fadeInTray() {
@@ -590,6 +596,10 @@ function updateToolbar(state) {
     gameToolbar.style.display = "none";
     return;
   }
+  // Catches a tutorial bubble whose target silently went hidden since it was
+  // enqueued (e.g. resumed progress jumping straight to the number stage
+  // right after the assembly-stage steps were queued) - see recheck().
+  tutorial.recheck();
   gameToolbar.style.display = "flex";
   undoBtn.disabled = !state.canUndo;
   skipAssemblyBtn.style.display = state.readyForNumbers ? "none" : "";
