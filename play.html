@@ -115,6 +115,7 @@
         <h3>Game Menu</h3>
         <button type="button" class="link-btn" id="gameMenuCloseBtn">Close</button>
       </div>
+      <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="replayTutorialBtn">🎓 Replay tutorial</button>
       <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="highlightErrorsBtn" title="Turn off to stop numbers that conflict from turning red">⚠ Highlight errors</button>
       <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="leaderboardBtn">🏆 Leaderboard</button>
       <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="clearNotesBtn">🧹 Clear notes</button>
@@ -154,6 +155,7 @@
 <script src="Online Game/js/pazuju-firebase.js"></script>
 <script src="Online Game/js/pazuju-xml-loader.js"></script>
 <script src="Online Game/js/pazuju-engine.js"></script>
+<script src="Online Game/js/pazuju-tutorial.js"></script>
 <script src="Online Game/js/celebration.js"></script>
 <script src="Online Game/js/ads.js"></script>
 <script>
@@ -395,6 +397,55 @@ clearNotesBtn.addEventListener("click", () => {
   closeGameMenu();
 });
 
+// First-run coach-mark tutorial (see pazuju-tutorial.js) - a queue of
+// floating tooltips anchored to real toolbar/board/tray elements. Runs
+// automatically the first time a brand-new player ever opens a puzzle (see
+// the tutorial.hasBeenSeen() check in selectSize() below) and is replayable
+// anytime via this game-menu item. tutorialNumberSteps() isn't enqueued
+// until updateToolbar() actually sees the assembly-to-numbers transition
+// fire (see pendingTutorialNumbers) - its targets (the number pad etc.)
+// aren't meaningfully visible before then.
+const tutorial = new PazujuTutorial();
+const replayTutorialBtn = document.getElementById("replayTutorialBtn");
+let pendingTutorialNumbers = false;
+
+function tutorialAssemblySteps() {
+  const steps = [
+    { target: trayEl, text: "Tap a piece to rotate it, or drag it onto the board to place it." },
+    { target: skipAssemblyBtn, text: "Don't want to assemble the pieces yourself? Tap here to skip straight to the numbers." },
+    { target: trayUpBtn, text: "Use these arrows to bring your other pieces within reach." },
+  ];
+  return steps;
+}
+
+function tutorialNumberSteps() {
+  return [
+    { target: boardEl, text: "Tap any empty square to select it." },
+    { target: numberPadEl, text: "Then tap a number to fill it into the selected square." },
+    { target: undoBtn, text: "Made a mistake? Undo it, or tap the same number again to clear it." },
+    { target: notesBtn, text: "Not sure yet? Tap the pencil to jot down candidate numbers instead of a final answer." },
+    { target: boardEl, text: "To win, fill every square so no number repeats in the same row, column, or puzzle piece." },
+  ];
+}
+
+// Starts (or restarts) the tutorial from whichever stage the current puzzle
+// is actually in - the assembly-stage group if pieces still need placing, or
+// straight to the number-stage group if it's already past that.
+function startTutorial() {
+  tutorial.skipAll();
+  if (wasReadyForNumbers) {
+    tutorial.enqueue(tutorialNumberSteps());
+  } else {
+    pendingTutorialNumbers = true;
+    tutorial.enqueue(tutorialAssemblySteps());
+  }
+}
+
+replayTutorialBtn.addEventListener("click", () => {
+  closeGameMenu();
+  startTutorial();
+});
+
 const sharePanel = document.getElementById("sharePanel");
 const shareSummaryEl = document.getElementById("shareSummary");
 const shareBtn = document.getElementById("shareBtn");
@@ -557,6 +608,10 @@ function updateToolbar(state) {
       numberPadEl.style.opacity = "0"; // engine just made it visible instantly - hold it hidden until the tray finishes fading
       fadeOutTray();
       setTimeout(() => { numberPadEl.style.opacity = "1"; }, TRAY_FADE_MS);
+      if (pendingTutorialNumbers) {
+        pendingTutorialNumbers = false;
+        tutorial.enqueue(tutorialNumberSteps());
+      }
     } else {
       numberPadEl.style.opacity = "0";
       fadeInTray();
@@ -847,6 +902,7 @@ async function loadDate(date) {
   sharePanel.classList.remove("visible");
   closeLeaderboard();
   closeGameMenu();
+  tutorial.reset();
 
   dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
   dateSub.textContent = "Pick a size to start playing.";
@@ -888,6 +944,8 @@ function selectSize(sizeKey, cardEl) {
   sharePanel.classList.remove("visible");
   closeLeaderboard();
   closeGameMenu();
+  tutorial.reset();
+  pendingTutorialNumbers = false;
   wasReadyForNumbers = false;
   fadeInTray();
   numberPadEl.style.opacity = "0";
@@ -895,6 +953,17 @@ function selectSize(sizeKey, cardEl) {
   game.loadPuzzle(puzzle);
   gameArea.classList.add("active");
   gameArea.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Auto-run the tutorial exactly once ever, for this brand-new player's very
+  // first puzzle - see tutorial.markSeen() inside startTutorial() -> skipAll()
+  // only covers an explicit skip, so mark it here instead, the moment the
+  // auto-run actually begins (not only once it finishes - a player who closes
+  // the puzzle mid-tutorial shouldn't get nagged again on the next one).
+  if (!tutorial.hasBeenSeen()) {
+    tutorial.markSeen();
+    pendingTutorialNumbers = true;
+    tutorial.enqueue(tutorialAssemblySteps());
+  }
 
   // Resume any progress synced from a previous session/device for this exact
   // puzzle. The read is async, so guard against a stale response landing

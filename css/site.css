@@ -892,6 +892,58 @@ section.block h2 {
 }
 .game-menu-panel .menu-item-btn:first-of-type { margin-top: 4px; }
 
+/* First-run coach-mark tutorial (see pazuju-tutorial.js) - a floating
+   tooltip anchored next to whatever toolbar/board/tray element it's
+   currently explaining, plus a pulsing highlight ring on that element
+   itself. Non-modal by design (no dimming scrim) so the game stays fully
+   visible/interactive underneath, matching the reference "Old App"
+   tutorial's feel. */
+.tutorial-bubble {
+  position: fixed;
+  z-index: 2600;
+  max-width: 260px;
+  background: var(--parchment);
+  border: 2px solid var(--wood-dark-1);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+  padding: 14px 16px;
+}
+.tutorial-bubble::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: var(--tail-left, 20px);
+  width: 14px;
+  height: 14px;
+  background: var(--parchment);
+  border-top: 2px solid var(--wood-dark-1);
+  border-left: 2px solid var(--wood-dark-1);
+  transform: translateX(-50%) rotate(45deg);
+}
+.tutorial-bubble.tutorial-bubble-above::before {
+  top: auto;
+  bottom: -8px;
+  border-top: none;
+  border-left: none;
+  border-bottom: 2px solid var(--wood-dark-1);
+  border-right: 2px solid var(--wood-dark-1);
+}
+.tutorial-bubble p { margin: 0 0 12px; font-size: 14px; color: var(--ink); line-height: 1.4; }
+.tutorial-bubble-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tutorial-bubble-actions .tutorial-skip { font-size: 12px; }
+.tutorial-bubble-actions .tutorial-next { padding: 7px 16px; font-size: 13px; }
+
+.tutorial-highlight {
+  position: relative;
+  z-index: 2500;
+  border-radius: 8px;
+  animation: tutorialPulse 1.4s ease-in-out infinite;
+}
+@keyframes tutorialPulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--match), 0 0 10px 2px rgba(242,181,58,0.5); }
+  50% { box-shadow: 0 0 0 5px var(--match), 0 0 18px 6px rgba(242,181,58,0.85); }
+}
+
 .check-badge {
   display: inline-flex;
   align-items: center;

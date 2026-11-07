@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pazuju-shell-v8';
+const CACHE_VERSION = 'pazuju-shell-v9';
 
 const SHELL_ASSETS = [
   '/',
@@ -19,6 +19,7 @@ const SHELL_ASSETS = [
   '/Online Game/js/pazuju-firebase.js',
   '/Online Game/js/pazuju-xml-loader.js',
   '/Online Game/js/pazuju-engine.js',
+  '/Online Game/js/pazuju-tutorial.js',
   '/Online Game/js/celebration.js',
   '/Online Game/js/ads.js',
 ];
