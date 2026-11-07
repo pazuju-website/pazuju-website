@@ -102,13 +102,23 @@
       </div>
     </div>
     <div class="game-toolbar" id="gameToolbar">
-      <button type="button" class="btn secondary toolbar-btn" id="undoBtn" title="Undo last move (Ctrl+Z)">↶ Undo</button>
-      <button type="button" class="btn secondary toolbar-btn" id="skipAssemblyBtn">Skip assembly <span class="ad-tag" id="skipAssemblyAdTag">Watch ad</span></button>
-      <button type="button" class="btn toolbar-btn" id="checkNumbersBtn">✓ Check numbers <span class="check-badge" id="checkBadge"></span></button>
-      <button type="button" class="btn secondary toolbar-btn" id="leaderboardBtn">🏆 Leaderboard</button>
+      <button type="button" class="btn secondary toolbar-btn icon-btn" id="gameMenuBtn" title="Game menu">☰</button>
+      <button type="button" class="btn secondary toolbar-btn icon-btn" id="undoBtn" title="Undo last move (Ctrl+Z)">↶</button>
+      <button type="button" class="btn secondary toolbar-btn icon-btn" id="skipAssemblyBtn" title="Skip assembly">⏭ <span class="ad-tag" id="skipAssemblyAdTag">Ad</span></button>
+      <button type="button" class="btn toolbar-btn icon-btn" id="checkNumbersBtn" title="Check numbers">✓ <span class="check-badge" id="checkBadge"></span></button>
+      <button type="button" class="btn secondary toolbar-btn icon-btn" id="notesBtn" title="Pencil-mark mode: write candidate numbers instead of a final answer">✎</button>
     </div>
     <div id="numberPad" class="number-pad"></div>
     <div class="status" id="status"></div>
+    <div class="game-menu-panel" id="gameMenuPanel">
+      <div class="leaderboard-header">
+        <h3>Game Menu</h3>
+        <button type="button" class="link-btn" id="gameMenuCloseBtn">Close</button>
+      </div>
+      <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="highlightErrorsBtn" title="Turn off to stop numbers that conflict from turning red">⚠ Highlight errors</button>
+      <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="leaderboardBtn">🏆 Leaderboard</button>
+      <button type="button" class="btn secondary toolbar-btn menu-item-btn" id="clearNotesBtn">🧹 Clear notes</button>
+    </div>
     <div class="leaderboard-panel" id="leaderboardPanel">
       <div class="leaderboard-header">
         <h3 id="leaderboardTitle">Leaderboard</h3>
@@ -331,6 +341,59 @@ const undoBtn = document.getElementById("undoBtn");
 const skipAssemblyAdTag = document.getElementById("skipAssemblyAdTag");
 const checkNumbersBtn = document.getElementById("checkNumbersBtn");
 const checkBadge = document.getElementById("checkBadge");
+const notesBtn = document.getElementById("notesBtn");
+
+// "Highlight errors" is a persistent per-device preference (not per-puzzle),
+// unlike notes mode which always starts off for a fresh puzzle - defaults on
+// to match the game's original always-on behavior.
+function getHighlightErrorsPref() {
+  try {
+    return localStorage.getItem("pazuju-highlight-errors") !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function setHighlightErrorsPref(on) {
+  try { localStorage.setItem("pazuju-highlight-errors", on ? "on" : "off"); } catch { /* storage unavailable - just won't persist */ }
+}
+
+// .toggled ("currently on") is kept in sync by updateToolbar() on every
+// render, since toggleNotesMode()/setHighlightErrors() both trigger one.
+notesBtn.addEventListener("click", () => game.toggleNotesMode());
+
+// Game menu (☰) - a dropdown-style panel for the less-frequent actions
+// (highlight-errors setting, leaderboard, clear notes), kept off the main
+// toolbar row so that row can stay icon-only and fit one line (see the
+// icon-btn styling in site.css - matches the reference "Old App" toolbar).
+const gameMenuBtn = document.getElementById("gameMenuBtn");
+const gameMenuPanel = document.getElementById("gameMenuPanel");
+const gameMenuCloseBtn = document.getElementById("gameMenuCloseBtn");
+const highlightErrorsBtn = document.getElementById("highlightErrorsBtn");
+const clearNotesBtn = document.getElementById("clearNotesBtn");
+
+function closeGameMenu() {
+  gameMenuPanel.classList.remove("visible");
+}
+
+gameMenuBtn.addEventListener("click", () => {
+  closeLeaderboard();
+  gameMenuPanel.classList.toggle("visible");
+});
+gameMenuCloseBtn.addEventListener("click", closeGameMenu);
+
+// Every menu item is a single pick - close the menu right after acting,
+// rather than leaving it open and making the player dismiss it separately.
+highlightErrorsBtn.addEventListener("click", () => {
+  const next = !game.highlightErrors;
+  setHighlightErrorsPref(next);
+  game.setHighlightErrors(next);
+  closeGameMenu();
+});
+clearNotesBtn.addEventListener("click", () => {
+  game.clearNotes();
+  closeGameMenu();
+});
 
 const sharePanel = document.getElementById("sharePanel");
 const shareSummaryEl = document.getElementById("shareSummary");
@@ -355,6 +418,7 @@ leaderboardCloseBtn.addEventListener("click", closeLeaderboard);
 // Fastest times for the exact puzzle currently open (this date + this size
 // only, not a global ranking) - see getLeaderboard() in pazuju-firebase.js.
 leaderboardBtn.addEventListener("click", async () => {
+  closeGameMenu();
   const sizeInfo = manifest.sizes.find(s => s.key === selectedSizeKey);
   const dateLabel = currentPuzzleDate === todayLocalISO() ? "Today's" : formatDateLong(currentPuzzleDate) + "'s";
   leaderboardTitle.textContent = `${dateLabel} ${sizeInfo.creature} ${sizeInfo.label} Leaderboard`;
@@ -479,6 +543,13 @@ function updateToolbar(state) {
   undoBtn.disabled = !state.canUndo;
   skipAssemblyBtn.style.display = state.readyForNumbers ? "none" : "";
   checkNumbersBtn.style.display = state.readyForNumbers ? "" : "none";
+  notesBtn.style.display = state.readyForNumbers ? "" : "none";
+  // Highlight-errors/clear-notes only matter once numbers are being filled
+  // in; leaderboard stays available at every stage.
+  highlightErrorsBtn.style.display = state.readyForNumbers ? "" : "none";
+  clearNotesBtn.style.display = state.readyForNumbers ? "" : "none";
+  notesBtn.classList.toggle("toggled", game.notesMode);
+  highlightErrorsBtn.classList.toggle("toggled", game.highlightErrors);
 
   if (state.readyForNumbers !== wasReadyForNumbers) {
     wasReadyForNumbers = state.readyForNumbers;
@@ -653,7 +724,7 @@ function computeBoardMaxPx() {
   return Math.max(180, Math.min(520, available));
 }
 
-const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, boardMaxPx: computeBoardMaxPx(), onSolved: handleSolved, onStateChange: updateToolbar });
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, boardMaxPx: computeBoardMaxPx(), onSolved: handleSolved, onStateChange: updateToolbar, highlightErrors: getHighlightErrorsPref() });
 
 let resizeTimer = null;
 function handleViewportResize() {
@@ -775,6 +846,7 @@ async function loadDate(date) {
   stopTimer();
   sharePanel.classList.remove("visible");
   closeLeaderboard();
+  closeGameMenu();
 
   dateHeading.textContent = date === todayLocalISO() ? "Today’s Puzzles" : "Puzzles for " + formatDateLong(date);
   dateSub.textContent = "Pick a size to start playing.";
@@ -815,6 +887,7 @@ function selectSize(sizeKey, cardEl) {
   puzzleMeta.textContent = `${sizeInfo.creature} ${sizeInfo.label} · ${difficultyCategory(puzzle.difficulty)} · values ${puzzle.valueMin}–${puzzle.valueMax}`;
   sharePanel.classList.remove("visible");
   closeLeaderboard();
+  closeGameMenu();
   wasReadyForNumbers = false;
   fadeInTray();
   numberPadEl.style.opacity = "0";

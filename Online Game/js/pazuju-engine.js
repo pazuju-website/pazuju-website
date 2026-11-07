@@ -3,13 +3,17 @@
 // produced by pazuju-xml-loader.js and renders/drives a single puzzle instance
 // inside caller-supplied DOM elements.
 class PazujuGame {
-  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange, boardMaxPx, trayMode }) {
+  constructor({ boardEl, trayEl, statusEl, numberPadEl, onSolved, onStateChange, boardMaxPx, trayMode, highlightErrors, staggerPad }) {
     this.boardEl = boardEl;
     this.trayEl = trayEl;
     this.statusEl = statusEl;
     this.numberPadEl = numberPadEl;
     this.onSolved = onSolved;
     this.onStateChange = onStateChange;
+    // Offsets alternating number-pad chips up/down into a "torn paper tab"
+    // look (the app's own style, see native.css) instead of one flat row -
+    // off by default so the website is unaffected. See _renderNumberPad().
+    this.staggerPad = !!staggerPad;
     // Lets a smaller embed (e.g. the homepage teaser) render a more compact
     // board than the full play page without touching the sizing logic itself.
     this.boardMaxPx = boardMaxPx || 520;
@@ -26,9 +30,39 @@ class PazujuGame {
     this.highlightValue = null;
     this._hasCelebrated = false;
     this._animating = false;
+    // Whether an ordinary row/col/piece duplicate-value conflict (NOT a
+    // given-vs-given collision, which always shows - see _renderBoard) turns
+    // a cell red. A settings toggle, defaults on to match prior behavior -
+    // see setHighlightErrors()/toggleNotesMode() for the caller-facing API.
+    this.highlightErrors = highlightErrors !== false;
+    // Pencil-mark mode: while on, tapping a number-pad digit toggles it in a
+    // cell's small candidate-notes set (this.notes) instead of setting its
+    // real value - see _onPadClick()/toggleNotesMode().
+    this.notesMode = false;
 
     this._onDragMove = this._onDragMove.bind(this);
     this._onDragEnd = this._onDragEnd.bind(this);
+  }
+
+  setHighlightErrors(on) {
+    this.highlightErrors = !!on;
+    this._renderAll();
+  }
+
+  toggleNotesMode() {
+    this.notesMode = !this.notesMode;
+    this._renderAll();
+  }
+
+  // Wipes every pencil-mark candidate on the board at once (the "Clear
+  // notes" game-menu item) - an undoable action like any other, not a
+  // confirm-dialog-gated one, since Undo already covers an accidental tap.
+  clearNotes() {
+    if (!Object.keys(this.notes).length) return;
+    const before = this._snapshot();
+    this.notes = {};
+    this._commitHistory(before);
+    this._renderAll();
   }
 
   // Swaps in a new puzzle. Safe to call repeatedly on the same instance.
@@ -40,6 +74,13 @@ class PazujuGame {
     this.boardGivens = puzzle.boardGivens;
     this.solutionGrid = puzzle.solutionGrid;
     this.fixedPieceIds = new Set(puzzle.fixedPieces.map(p => p.id));
+    // The puzzle's true piece count, fixed at load time - _renderBoard()'s
+    // "all placed" check compares against this instead of re-deriving a
+    // total from whatever's currently in placed/unplaced, which would
+    // silently shrink (and falsely report ready-for-numbers) if a piece
+    // were ever lost from both, e.g. by the mid-drag sync race fixed in
+    // getState()/restoreState() above.
+    this._totalPieceCount = puzzle.fixedPieces.length + puzzle.trayPieces.length;
 
     const palette = this._buildPalette(puzzle.fixedPieces.length + puzzle.trayPieces.length);
     let colorIndex = 0;
@@ -59,6 +100,10 @@ class PazujuGame {
       solved: { origin: { ...p.solved.origin }, cells: p.solved.cells.map(c => [...c]), givens: { ...p.solved.givens } },
     }));
     this.userValues = {};
+    // Pencil-mark candidates per cell ("r,c" -> sorted array of digits) - a
+    // player memory aid, cleared for a cell the moment it gets a real value
+    // (see _onPadClick). Independent of userValues/lockedCells.
+    this.notes = {};
     // Keys ("r,c") of user-filled cells confirmed correct by a past
     // "check numbers" - rendered and treated like given/starter cells from
     // then on (locked, not re-editable). See checkNumbers().
@@ -69,6 +114,7 @@ class PazujuGame {
     this._hasCelebrated = false;
     this._animating = false;
     this.trayWindowStart = 0;
+    this.notesMode = false;
 
     this._applyCellSizing();
     this._renderAll();
@@ -82,6 +128,7 @@ class PazujuGame {
       placed: this.placed,
       unplaced: this.unplaced,
       userValues: this.userValues,
+      notes: this.notes,
       lockedCells: [...this.lockedCells],
     });
   }
@@ -109,10 +156,23 @@ class PazujuGame {
   // to a backend. Deliberately excludes UI-only state (selectedCell,
   // highlightValue, drag state). See restoreState() for the inverse.
   getState() {
+    let placed = this.placed;
+    // A snapshot taken mid-drag (app losing focus for an ad, screen lock,
+    // task switch) would otherwise catch a board piece in limbo: it's pulled
+    // out of `placed` the instant a re-drag is confirmed (see _onDragMove)
+    // and only rejoins `placed`/`unplaced` once the drag ends, so a sync
+    // right then would persist it as missing from both, permanently. Put it
+    // back in its pre-drag spot here so that can't happen (tray-sourced
+    // drags don't need this - that piece stays in `unplaced` the whole time,
+    // only removed on a successful drop).
+    if (this.dragging && this.dragging.moved && this.dragging.source === "board") {
+      placed = [...placed, this.dragging.piece];
+    }
     return {
-      placed: this.placed,
+      placed,
       unplaced: this.unplaced,
       userValues: this.userValues,
+      notes: this.notes,
       lockedCells: [...this.lockedCells],
       solved: this._hasCelebrated,
     };
@@ -126,9 +186,48 @@ class PazujuGame {
   // of local actions the player could step back through.
   restoreState(state) {
     if (!state) return;
-    if (state.placed) this.placed = state.placed;
-    if (state.unplaced) this.unplaced = state.unplaced;
+    if (state.placed && state.unplaced) {
+      const savedIds = new Set([...state.placed, ...state.unplaced].map(p => p.id));
+      // Recover any piece the freshly-loaded puzzle (still sitting in
+      // this.placed/this.unplaced from the loadPuzzle() call just before
+      // this) knows about but the saved snapshot doesn't - e.g. one lost
+      // mid-drag by an interrupted sync (see getState()) - by returning it
+      // to the tray instead of leaving it vanished forever.
+      const recovered = [...this.placed, ...this.unplaced].filter(p => !savedIds.has(p.id));
+      this.placed = state.placed;
+      this.unplaced = recovered.length ? state.unplaced.concat(recovered) : state.unplaced;
+    } else {
+      if (state.placed) this.placed = state.placed;
+      if (state.unplaced) this.unplaced = state.unplaced;
+    }
+    // Guard against a placed piece whose saved origin overlaps another
+    // piece or falls outside the board - e.g. one written mid-drag by an
+    // older client build that predates getState()'s pre-drag fix above.
+    // That piece is present by id (so the recovery pass just above never
+    // catches it) but silently steals a cell from whoever it overlaps,
+    // leaving that other cell uncovered forever with nothing flagging it
+    // as wrong. Re-validate geometry on every restore, same as a piece
+    // missing outright: anything that doesn't fit cleanly bounces to the
+    // tray instead of corrupting the board.
+    const seen = Array.from({ length: this.size }, () => Array(this.size).fill(false));
+    const validPlaced = [];
+    const bounced = [];
+    for (const p of this.placed) {
+      const ok = p.cells.every(([r, c]) => {
+        const rr = p.origin.r + r, cc = p.origin.c + c;
+        return rr >= 0 && rr < this.size && cc >= 0 && cc < this.size && !seen[rr][cc];
+      });
+      if (ok) {
+        p.cells.forEach(([r, c]) => { seen[p.origin.r + r][p.origin.c + c] = true; });
+        validPlaced.push(p);
+      } else {
+        bounced.push(p);
+      }
+    }
+    this.placed = validPlaced;
+    if (bounced.length) this.unplaced = this.unplaced.concat(bounced);
     this.userValues = state.userValues || {};
+    this.notes = state.notes || {};
     this.lockedCells = new Set(state.lockedCells || []);
     this.history = [];
     this._hasCelebrated = !!state.solved;
@@ -141,6 +240,7 @@ class PazujuGame {
     this.placed = st.placed;
     this.unplaced = st.unplaced;
     this.userValues = st.userValues;
+    this.notes = st.notes || {};
     this.lockedCells = new Set(st.lockedCells);
     this._renderAll();
     return true;
@@ -148,7 +248,13 @@ class PazujuGame {
 
   _applyCellSizing() {
     this.cell = this._computeCellSize(this.size);
-    this.trayCell = Math.max(16, Math.round(this.cell * 0.62));
+    // Paged mode (the app) renders tray pieces noticeably smaller than list
+    // mode (the website, unaffected - 0.62 unchanged there) - the user asked
+    // for the free-piece area to shrink by scaling the pieces themselves
+    // down, not just clipping/overflowing a same-sized piece out of a
+    // shorter box (see the "Old App" screenshots this was modeled on).
+    const trayScale = this.trayMode === "paged" ? 0.42 : 0.62;
+    this.trayCell = Math.max(this.trayMode === "paged" ? 12 : 16, Math.round(this.cell * trayScale));
     this.boardEl.style.width = (this.size * this.cell) + "px";
     this.boardEl.style.height = (this.size * this.cell) + "px";
     this.boardEl.style.backgroundSize = `${this.cell}px ${this.cell}px`;
@@ -156,10 +262,19 @@ class PazujuGame {
       // Fixed height, independent of which pieces are currently in the
       // window or how they're rotated - a piece that rotates into a taller
       // bounding box doesn't resize this area, it just pokes out past the
-      // edge instead (see native.css's #tray overflow:visible). Baseline of
-      // 3 cells tall comfortably fits most piece shapes; taller ones (4-5
-      // cells, this generator's max) are the deliberate overflow case.
-      this.trayEl.style.height = (this.trayCell * 3 + 20) + "px";
+      // edge instead (see native.css's #tray overflow:visible). Sized for
+      // roughly ONE (now smaller-scaled, see trayScale above) cell tall plus
+      // a little breathing room - most pieces (even in their default
+      // orientation) run taller than this and will routinely overflow, which
+      // is the explicit trade-off requested: a thin strip that gives almost
+      // all the vertical space back to the board, matching the reference
+      // app's proportions (see the "Old App 3/4" screenshots this was
+      // modeled on). Tuned over several rounds of feedback: a stray
+      // min-height:250px leftover from the website's tray style (see
+      // native.css, now fixed) was masking the real computed value, which
+      // turned out "way too small" (floor 26) once found; floor 40, then
+      // floor 56, were each still "too short" - this doubles that last one.
+      this.trayEl.style.height = Math.max(112, Math.round(this.trayCell * 4 + 40)) + "px";
     }
   }
 
@@ -276,7 +391,7 @@ class PazujuGame {
     // the puzzle is even ready to move into the number-filling stage.
     const givenConflicts = new Set([...givenCollisions, ...this._findConflicts(givenOnlyGrid, cover)]);
 
-    const totalPieces = this.fixedPieceIds.size + this._totalTrayCount;
+    const totalPieces = this._totalPieceCount;
     const allPlaced = this.placed.length === totalPieces;
     this._allPiecesPlaced = allPlaced;
     const readyForNumbers = allPlaced && givenConflicts.size === 0;
@@ -338,8 +453,12 @@ class PazujuGame {
         // dragged back off the board or tapped to rotate in place - see
         // _startBoardDrag/_rotatePlacedPiece.
         const movable = p && !this.fixedPieceIds.has(p.id) && !readyForNumbers;
+        const key = r + "," + c;
         if (givenGrid[r][c]) div.classList.add("given");
-        if (conflicts.has(r + "," + c)) div.classList.add("conflict");
+        // Given-vs-given collisions always show (they block progression, not
+        // an optional assist) - ordinary row/col/piece duplicate highlighting
+        // is gated behind the highlightErrors setting (see setHighlightErrors()).
+        if (givenCollisions.has(key) || (this.highlightErrors && conflicts.has(key))) div.classList.add("conflict");
         if (this.selectedCell && this.selectedCell.r === r && this.selectedCell.c === c) div.classList.add("selected");
         if (this.highlightValue !== null && val === this.highlightValue) div.classList.add("value-match");
         if (val !== null) {
@@ -347,6 +466,11 @@ class PazujuGame {
           chip.className = "num-chip";
           chip.textContent = val;
           div.appendChild(chip);
+        } else if (editable && this.notes[key] && this.notes[key].length) {
+          const notesEl = document.createElement("span");
+          notesEl.className = "cell-notes";
+          notesEl.textContent = this.notes[key].join(" ");
+          div.appendChild(notesEl);
         }
         if (movable) {
           div.style.cursor = "grab";
@@ -517,7 +641,6 @@ class PazujuGame {
   }
 
   _renderAll() {
-    this._totalTrayCount = this.unplaced.length + this.placed.filter(p => !this.fixedPieceIds.has(p.id)).length;
     this._renderBoard();
     this._renderTray();
     this._renderNumberPad();
@@ -544,7 +667,7 @@ class PazujuGame {
     Object.keys(this.userValues).forEach(key => {
       const [r, c] = key.split(",").map(Number);
       if (this.userValues[key] !== this.solutionGrid[r][c]) wrong.push({ r, c, key });
-      else this.lockedCells.add(key);
+      else { this.lockedCells.add(key); delete this.notes[key]; }
     });
     const checked = Object.keys(this.userValues).length;
     // A check is a checkpoint, not an undoable step - undoing past it would
@@ -617,10 +740,15 @@ class PazujuGame {
       return;
     }
     this.numberPadEl.style.display = "";
+    // Lets the chips themselves look different while notes mode is on (see
+    // .number-pad.notes-mode in site.css), not just the toolbar toggle
+    // button - a persistent reminder of which mode taps will apply.
+    this.numberPadEl.classList.toggle("notes-mode", this.notesMode);
     const count = this.valueMax - this.valueMin + 1;
     const gap = 10;
     const chipSize = Math.max(24, Math.min(48, Math.floor((this.boardMaxPx - gap * (count - 1)) / count)));
     this.numberPadEl.style.gap = gap + "px";
+    let i = 0;
     for (let v = this.valueMin; v <= this.valueMax; v++) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -628,12 +756,20 @@ class PazujuGame {
       btn.style.width = chipSize + "px";
       btn.style.height = chipSize + "px";
       btn.style.fontSize = Math.round(chipSize * 0.42) + "px";
+      // "Torn paper tab" stagger (app-only, see native.css) - every other
+      // chip sits higher/further back (positive margin-bottom pulls a
+      // flex-end-aligned item's visible box up off the row's bottom edge),
+      // in real px derived from this chip's own size rather than a CSS
+      // percentage margin (which resolves against the row's WIDTH, not each
+      // chip's height, and would come out wrong).
+      if (this.staggerPad && i % 2 === 1) btn.style.marginBottom = Math.round(chipSize * 0.4) + "px";
       if (!this.selectedCell) btn.classList.add("disabled");
       if (this.highlightValue === v) btn.classList.add("active");
       if ((this._valueCounts[v] || 0) >= this.size) btn.classList.add("complete");
       btn.textContent = v;
       btn.addEventListener("click", () => this._onPadClick(v));
       this.numberPadEl.appendChild(btn);
+      i++;
     }
   }
 
@@ -642,8 +778,19 @@ class PazujuGame {
     const { r, c } = this.selectedCell;
     const key = r + "," + c;
     const before = this._snapshot();
-    if (this.userValues[key] === value) delete this.userValues[key];
-    else this.userValues[key] = value;
+    if (this.notesMode) {
+      // Pencil-mark mode: toggle the digit in this cell's candidate set
+      // instead of setting a real value - leaves userValues untouched.
+      const set = new Set(this.notes[key] || []);
+      if (set.has(value)) set.delete(value); else set.add(value);
+      if (set.size) this.notes[key] = [...set].sort((a, b) => a - b);
+      else delete this.notes[key];
+    } else {
+      if (this.userValues[key] === value) delete this.userValues[key];
+      else this.userValues[key] = value;
+      // A real value makes any pencil marks in this cell moot.
+      delete this.notes[key];
+    }
     this._commitHistory(before);
     this.highlightValue = value;
     this._renderAll();

@@ -666,6 +666,18 @@ section.block h2 {
   background-image: linear-gradient(160deg, #e26a5a, var(--danger) 65%, #7a1414);
 }
 
+/* Pencil-mark candidates (see notesMode in pazuju-engine.js) - small, muted
+   text rather than a full chip, so it reads clearly as "not committed yet". */
+.cell-notes {
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--wood-dark-2);
+  opacity: 0.65;
+  text-align: center;
+  line-height: 1;
+}
+
 #tray {
   width: 250px;
   min-height: 250px;
@@ -758,6 +770,19 @@ section.block h2 {
   pointer-events: none;
 }
 
+/* Pencil-mark mode (see notesMode/toggleNotesMode in pazuju-engine.js) gives
+   the number-pad chips themselves a distinct cool/blue "pencil" look, not
+   just the toolbar toggle button - a persistent reminder, visible right next
+   to where taps happen, of which mode a tap will apply. */
+.number-pad.notes-mode .pad-chip:not(.disabled) {
+  background-image: linear-gradient(160deg, #7fb0d8, var(--select) 60%, #1d4f73);
+}
+
+.number-pad.notes-mode .pad-chip.complete {
+  color: var(--cream);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+}
+
 .status { font-size: 14px; font-weight: 700; margin-top: 16px; min-height: 20px; text-align: center; color: var(--wood-dark-2); }
 .error-msg { color: var(--danger); font-weight: 600; text-align: center; margin-top: 16px; }
 .puzzle-meta { font-size: 13px; color: var(--ink); opacity: 0.8; text-align: center; margin-bottom: 8px; }
@@ -822,6 +847,50 @@ section.block h2 {
   cursor: default;
   filter: none;
 }
+
+/* Pressed/on state for a toggle button (notes mode, highlight-errors setting
+   - see play.html/app-src/index.html) - same ring treatment as a selected
+   number-pad chip, so "this is currently on" reads consistently. */
+.toolbar-btn.toggled {
+  outline: 3px solid var(--select);
+  outline-offset: 2px;
+}
+
+/* Symbol-only main-toolbar buttons (☰ menu, ↶ undo, ⏭ skip, ✓ check, ✎
+   notes) - matches the reference "Old App" toolbar, which uses icons/short
+   glyphs instead of full labels so the whole row stays on one line even on
+   a narrow phone. Less-frequent actions (highlight-errors, leaderboard,
+   clear notes) move into the .game-menu-panel below instead of competing
+   for room in this row. */
+.icon-btn {
+  gap: 4px;
+  padding: 10px 14px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* The ☰ game menu - a dropdown-style panel for actions that don't need to
+   live in the always-visible icon row above. Same look/positioning as
+   .leaderboard-panel (app-only absolute-centering override lives in
+   native.css, alongside .leaderboard-panel/.share-panel). */
+.game-menu-panel {
+  display: none;
+  max-width: 320px;
+  margin: 24px auto 0;
+  padding: 16px 20px;
+  background: var(--parchment);
+  border: 2px solid var(--wood-dark-1);
+  border-radius: 10px;
+}
+.game-menu-panel.visible { display: block; }
+
+.game-menu-panel .menu-item-btn {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+.game-menu-panel .menu-item-btn:first-of-type { margin-top: 4px; }
 
 .check-badge {
   display: inline-flex;
