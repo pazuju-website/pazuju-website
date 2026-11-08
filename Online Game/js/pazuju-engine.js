@@ -745,7 +745,10 @@ class PazujuGame {
     // button - a persistent reminder of which mode taps will apply.
     this.numberPadEl.classList.toggle("notes-mode", this.notesMode);
     const count = this.valueMax - this.valueMin + 1;
-    const gap = 10;
+    const maxGap = 10;
+    const minGap = 4;
+    const minChipSize = 24;
+    const maxChipSize = 48;
     // Chips need to fit inside boardMaxPx net of the pad's own horizontal
     // padding/border (site.css's .number-pad) - sizing the chip row to the
     // full boardMaxPx and ignoring that chrome made the whole pad render
@@ -757,7 +760,17 @@ class PazujuGame {
     const padChrome = parseFloat(padStyle.paddingLeft) + parseFloat(padStyle.paddingRight) +
       parseFloat(padStyle.borderLeftWidth) + parseFloat(padStyle.borderRightWidth);
     const availableWidth = this.boardMaxPx - padChrome;
-    const chipSize = Math.max(24, Math.min(48, Math.floor((availableWidth - gap * (count - 1)) / count)));
+    let gap = maxGap;
+    let chipSize = Math.min(maxChipSize, Math.floor((availableWidth - gap * (count - 1)) / count));
+    // A 10-value pad (10x10 boards) on a narrow phone can't fit at both the
+    // max gap AND the minChipSize tap-target floor - rather than shrink chips
+    // below that floor (or silently overflow the pad's own padding box, which
+    // is what used to happen here), shrink the gap first. Chips stay a
+    // readable/tappable 24px; the row just sits a little tighter.
+    if (chipSize < minChipSize) {
+      chipSize = minChipSize;
+      gap = Math.max(minGap, Math.floor((availableWidth - chipSize * count) / (count - 1)));
+    }
     this.numberPadEl.style.gap = gap + "px";
     let i = 0;
     for (let v = this.valueMin; v <= this.valueMax; v++) {
