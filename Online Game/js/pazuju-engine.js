@@ -11,8 +11,8 @@ class PazujuGame {
     this.onSolved = onSolved;
     this.onStateChange = onStateChange;
     // Offsets alternating number-pad chips up/down into a "torn paper tab"
-    // look (the app's own style, see native.css) instead of one flat row -
-    // off by default so the website is unaffected. See _renderNumberPad().
+    // look instead of one flat row - defaults off, but both the website
+    // (play.html) and the app now pass staggerPad: true. See _renderNumberPad().
     this.staggerPad = !!staggerPad;
     // Lets a smaller embed (e.g. the homepage teaser) render a more compact
     // board than the full play page without touching the sizing logic itself.
@@ -746,7 +746,18 @@ class PazujuGame {
     this.numberPadEl.classList.toggle("notes-mode", this.notesMode);
     const count = this.valueMax - this.valueMin + 1;
     const gap = 10;
-    const chipSize = Math.max(24, Math.min(48, Math.floor((this.boardMaxPx - gap * (count - 1)) / count)));
+    // Chips need to fit inside boardMaxPx net of the pad's own horizontal
+    // padding/border (site.css's .number-pad) - sizing the chip row to the
+    // full boardMaxPx and ignoring that chrome made the whole pad render
+    // ~46px wider than boardMaxPx, overflowing past the right edge on
+    // narrow screens (most visible on the app's tight fixed frame). Read
+    // live from computed style rather than hardcoding, so a future CSS
+    // tweak can't silently reintroduce the overflow.
+    const padStyle = getComputedStyle(this.numberPadEl);
+    const padChrome = parseFloat(padStyle.paddingLeft) + parseFloat(padStyle.paddingRight) +
+      parseFloat(padStyle.borderLeftWidth) + parseFloat(padStyle.borderRightWidth);
+    const availableWidth = this.boardMaxPx - padChrome;
+    const chipSize = Math.max(24, Math.min(48, Math.floor((availableWidth - gap * (count - 1)) / count)));
     this.numberPadEl.style.gap = gap + "px";
     let i = 0;
     for (let v = this.valueMin; v <= this.valueMax; v++) {

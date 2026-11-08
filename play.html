@@ -789,7 +789,7 @@ function computeBoardMaxPx() {
   return Math.max(180, Math.min(520, available));
 }
 
-const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, boardMaxPx: computeBoardMaxPx(), onSolved: handleSolved, onStateChange: updateToolbar, highlightErrors: getHighlightErrorsPref() });
+const game = new PazujuGame({ boardEl, trayEl, statusEl, numberPadEl, boardMaxPx: computeBoardMaxPx(), onSolved: handleSolved, onStateChange: updateToolbar, highlightErrors: getHighlightErrorsPref(), staggerPad: true });
 
 let resizeTimer = null;
 function handleViewportResize() {

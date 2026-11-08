@@ -728,7 +728,10 @@ section.block h2 {
 .number-pad {
   display: flex;
   justify-content: center;
-  align-items: center;
+  /* flex-end, not center: the "torn paper tab" stagger (see staggerPad in
+     pazuju-engine.js) offsets alternating chips up via margin-bottom, which
+     only reads as a stagger against a shared bottom baseline. */
+  align-items: flex-end;
   flex-wrap: nowrap;
   margin: 28px auto 0;
   padding: 16px 20px;
