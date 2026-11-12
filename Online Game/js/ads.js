@@ -16,14 +16,11 @@ const PazujuAds = (() => {
     return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   }
 
-  // Phase 3 test ad unit IDs - Google's published constants, which serve a
-  // "Test Ad"-labeled creative to every device unconditionally, no AdMob
-  // account or per-device registration needed. Swap these for real ad unit
-  // IDs in Phase 4 once the user's own AdMob account/app/ad units exist -
-  // this object is the only thing that needs to change.
+  // Real AdMob ad unit IDs (Phase 4, 2026-11-11) - matches the App ID in
+  // pazuju-app's AndroidManifest.xml.
   const NATIVE_AD_CONFIG = {
-    rewardedAdUnitId: "ca-app-pub-3940256099942544/5224354917",
-    interstitialAdUnitId: "ca-app-pub-3940256099942544/1033173712",
+    rewardedAdUnitId: "ca-app-pub-2616129249983166/5901569996",
+    interstitialAdUnitId: "ca-app-pub-2616129249983166/9217998476",
   };
 
   function buildOverlay() {
@@ -109,7 +106,7 @@ const PazujuAds = (() => {
       ])
         .then((h) => {
           handles = h;
-          return AdMob.prepareRewardVideoAd({ adId: NATIVE_AD_CONFIG.rewardedAdUnitId, isTesting: true });
+          return AdMob.prepareRewardVideoAd({ adId: NATIVE_AD_CONFIG.rewardedAdUnitId, isTesting: false });
         })
         .then(() => AdMob.showRewardVideoAd())
         .catch((err) => {
@@ -147,7 +144,7 @@ const PazujuAds = (() => {
       ])
         .then((h) => {
           handles = h;
-          return AdMob.prepareInterstitial({ adId: NATIVE_AD_CONFIG.interstitialAdUnitId, isTesting: true });
+          return AdMob.prepareInterstitial({ adId: NATIVE_AD_CONFIG.interstitialAdUnitId, isTesting: false });
         })
         .then(() => AdMob.showInterstitial())
         .catch((err) => {
