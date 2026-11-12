@@ -270,6 +270,8 @@ Continuation of the same evening check-in: confirmed in the AdMob dashboard itse
 
 **Committed and pushed both repos** now that the IDs are proven working: Website repo `b4c7a87` (`Online Game/js/ads.js` — real ad unit IDs, `isTesting: false`), pazuju-app repo `ba49715` (`android/app/src/main/AndroidManifest.xml` real App ID + `app-src/native-bootstrap.js`'s updated self-click-risk comment). Both pushed to their GitHub remotes. **Android Phase 4's AdMob integration is now fully done.**
 
+**Session paused here, user signing off for the evening** — both repos are clean (everything committed and pushed, confirmed via `git status` on both before sign-off).
+
 **Next session should resume with**: "Finish setting up your game" in Play Console — content rating questionnaire, target audience, ads declaration, and data safety form are still outstanding (store listing text, 3 real screenshots, and a feature graphic were drafted/approved on 2026-11-11 but were left in that session's temp scratchpad folder — likely gone by now, may need regenerating — and still need uploading to Play Console manually). After that, the 12-tester/14-day closed-testing lineup is the remaining long-pole item before Production.
 
 ## Where we left off (2026-11-11, AdMob account created + real ad unit IDs wired in, blocked on Google's own account verification)
