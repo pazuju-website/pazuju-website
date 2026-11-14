@@ -270,6 +270,8 @@ User reported the app's screen rotated when the phone was turned sideways, and t
 
 Android Phase 4 status is unchanged from the 2026-11-13 entries below: still need a tester pool, a signed `.aab`, countries, and review submission before closed testing can start.
 
+**User signed off for the day after this fix (2026-11-14).** Nothing is in progress and both repos are clean and pushed. **Next session should open by**: (1) presenting the Next steps menu as usual; (2) flagging that **the puzzle archive ends 2026-12-30**, so another batch is needed within ~6 weeks (pool has plenty left, see the 2026-09-23 batch entry for method); (3) asking about the closed-testing tester pool (still undecided); (4) mentioning the still-unverified timer fix from 2026-10-29 (open Grasshopper, wait, switch to Snake, confirm Snake starts at 00:00). AdSense status wasn't re-checked this session; it was last "Needs attention / Low-value content" (2026-10-25).
+
 ## Where we left off (2026-11-13, rewarded/interstitial "No fill" diagnosed and mitigated, verified on-device)
 
 User reported the "check numbers" rewarded ad was inconsistent - "sometimes it works, but often does not" during real play on the test phone.
