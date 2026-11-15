@@ -812,8 +812,10 @@ class PazujuGame {
     } else {
       if (this.userValues[key] === value) delete this.userValues[key];
       else this.userValues[key] = value;
-      // A real value makes any pencil marks in this cell moot.
-      delete this.notes[key];
+      // Pencil marks are left untouched here - a real value just hides them
+      // (see _renderBoard: notes only render when the cell has no value), so
+      // if the value turns out to be wrong and gets removed, the notes the
+      // player already worked out are still there instead of lost.
     }
     this._commitHistory(before);
     this.highlightValue = value;
